@@ -17,13 +17,17 @@
 
 /* Is it better to have HTTP response messages as globals or defined macros?*/
 // Better to have responses as one line or multiline?
-const char * const OK = "";
+const char * const OK = "HTTP/1.1 200 OK";
 
-const char * const NOT_FOUND = "";
+const char * const NOT_FOUND = "HTTP/1.1 404 NOT FOUND";
 
-const char * const FORBIDDEN = "";
+const char * const FORBIDDEN = "HTTP/1.1 403 FORBIDDEN";
 
-const char * const BAD_REQUEST = "";
+const char * const BAD_REQUEST = "HTTP/1.1 400 BAD REQUEST";
+
+const char * const CREATED = "HTTP/1.1 201 CREATED";
+
+const char * const TIMEOUT = "HTTP/1.1 408 REQUEST TIME-OUT";
 
 const char * const log_root = "/home/elliott/github/C-Server-Collection/single-HTTP/";
 
