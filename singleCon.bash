@@ -6,8 +6,11 @@ function singleConnectionTest() {
 	local cdw=$PWD
 	cd $1
 	for ((i = 0; i < $2; i++)); do
-		nc localhost 8888 < getQuery.txt
+		while IFS='' read -r line || [[ -n "$line" ]]; do
+    		echo $line | nc localhost 8888
+		done < getQuery.txt
 	done
+	IFS=' '
 	cd $cdw
 	return 0
 }
