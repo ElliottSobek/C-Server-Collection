@@ -14,6 +14,7 @@
 #define BACKLOG 10
 #define PACKET_MAX 1024
 #define ASC_TIME_MAX 24
+#define MSG_LEN 4096
 
 /* Is it better to have HTTP response messages as globals or defined macros?*/
 // Better to have responses as one line or multiline?
@@ -232,7 +233,7 @@ void get_socket(int *socketfd, struct addrinfo *serviceinfo) {
 			continue;
 		}
 
-		if (setsockopt(*socketfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) { // Good setsocketopt flags?
+		if (setsockopt(*socketfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
 			perror("setsockopt"); // Log it/Ignore it?
 //			terminate("");
 		}
@@ -274,9 +275,9 @@ int main(int argc, const char ** const argv) {
 	const char * const port = "8888";
 	char *ipv4_address = "", *initwd = "", * const doc_root = calloc(PATH_MAX, sizeof(char));
 	int status = 0, socketfd = 0, new_fd = 0; // File descriptor proper names? Masterfd, newfd?
-	struct sockaddr_storage their_addr;
+	struct sockaddr_storage recv_addr;
 	struct addrinfo addressinfo, *serviceinfo;
-	socklen_t sin_size;
+	socklen_t sin_size = sizeof(recv_addr);
 
 	init_signals();
 	if (!is_valid_numberof_arguments(argc))
@@ -286,12 +287,12 @@ int main(int argc, const char ** const argv) {
 		exit(EXIT_FAILURE);
 
 	init_addrinfo(&addressinfo);
-	status = getaddrinfo(NULL, port, &addressinfo, &serviceinfo); // Look into function
+	status = getaddrinfo(NULL, port, &addressinfo, &serviceinfo);
 
 	if (!is_valid_address(status))
 		exit(EXIT_FAILURE);
 
-	get_socket(&socketfd, serviceinfo); // Look into function
+	get_socket(&socketfd, serviceinfo);
 
 	if (!is_valid_listen(socketfd))
 		exit(EXIT_FAILURE);
@@ -302,40 +303,41 @@ int main(int argc, const char ** const argv) {
 
 	if (verbose_flag)
 		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, initwd);
+	
+	char *msg = malloc(MSG_LEN * sizeof(char));
 
 	while (sigint_flag) {
-		strcpy(doc_root, "/home/elliott/Github/C-Server-Collection/single-HTTP/");
-		char *workingDirectory = calloc(PATH_MAX, sizeof(char)); // Can this be put on stack?
+		strncpy(doc_root, "/home/elliott/Github/C-Server-Collection/single-HTTP/", 53);
+		// char *workingDirectory = calloc(PATH_MAX, sizeof(char)); // Can this be put on stack?
 
 //		check_malloc(workingDirectory);
-		char *msg = malloc(4094 * sizeof(char)); // Can this be put on stack?
+		// char *msg = malloc(MSG_LEN * sizeof(char));
 
 //		check_malloc(msg);
 
-		strncpy(workingDirectory, initwd, (strlen(initwd) + 1));
-		strncat(workingDirectory, "/", 1);
-		sin_size = sizeof(their_addr);
-		new_fd = accept(socketfd, (struct sockaddr *)&their_addr, &sin_size);
+		// strncpy(workingDirectory, initwd, (strlen(initwd) + 1));
+		// strncat(workingDirectory, "/", 1);
+		// sin_size = sizeof(recv_addr);
+		new_fd = accept(socketfd, (struct sockaddr *)&recv_addr, &sin_size);
 
 		if (new_fd == -1) {
 			perror("accept"); // Log it/ignore?
 			continue;
 		}
 
-		inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr*)&their_addr), ipv4_address, sizeof(*ipv4_address));
+		inet_ntop(recv_addr.ss_family, get_in_addr((struct sockaddr*)&recv_addr), ipv4_address, sizeof(*ipv4_address));
 
-		if (recv(new_fd, msg, 4094, 0) < 0) { // Look into man page
+		if (recv(new_fd, msg, MSG_LEN, 0) < 0) { // Look into man page
 			perror("recv"); // Log it/ignore?
 			continue;
 		} else
 			printf("RECIEVE PACKET: SUCCESS\n");
-
 		determine_response(msg, new_fd, doc_root);
-		free(workingDirectory);
-		free(msg);
 	}
+	free(initwd);
+	free(msg);
+	free(doc_root);
 	printf("Closed\n");
-	close(new_fd);
 
 	return 0;
 }
