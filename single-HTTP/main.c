@@ -278,8 +278,6 @@ int main(int argc, const char ** const argv) {
 	struct addrinfo addressinfo, *serviceinfo;
 	socklen_t sin_size;
 
-	strcpy(doc_root, "/home/elliott/Github/C-Server-Collection/single-HTTP/");
-
 	init_signals();
 	if (!is_valid_numberof_arguments(argc))
 		exit(EXIT_FAILURE);
@@ -306,6 +304,7 @@ int main(int argc, const char ** const argv) {
 		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, initwd);
 
 	while (sigint_flag) {
+		strcpy(doc_root, "/home/elliott/Github/C-Server-Collection/single-HTTP/");
 		char *workingDirectory = calloc(PATH_MAX, sizeof(char)); // Can this be put on stack?
 
 //		check_malloc(workingDirectory);
