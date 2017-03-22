@@ -16,4 +16,4 @@ clean:
 	rm *.o single-HTTP
 
 memcheck:
-	valgrind --leak-check=full -v ./main
+	valgrind --leak-check=full -v ./single-HTTP
