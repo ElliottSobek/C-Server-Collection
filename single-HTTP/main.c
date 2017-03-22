@@ -29,9 +29,11 @@ const char * const CREATED = "HTTP/1.1 201 CREATED";
 
 const char * const TIMEOUT = "HTTP/1.1 408 REQUEST TIME-OUT";
 
+const char * const SERVER_ERROR = "HTTP/1.1 500 INTERNAL SERVER ERROR";
+
 const char * const log_root = "/home/elliott/github/C-Server-Collection/single-HTTP/";
 
-char * const doc_root = "/home/elliott/github/C-Server-Collection/single-HTTP/";
+// char *132doc_root = "/home/elliott/Github/C-Server-Collection/single-HTTP/"; // Was const after pointer
 
 int sigint_flag = 1;
 char verbose_flag = 1;
@@ -67,15 +69,20 @@ bool is_valid_request(char *reqline[]) {
 
 void determine_root(char *reqline[]) {
 	if (strncmp(reqline[1], "/\0", 2) == 0) {
+		printf("asked for /\n");
 		strncpy(reqline[1], "index.html", 11);
 	} else {
 		char *tok = strtok(reqline[1], "/");
-
-		if (!tok)
+		printf("Get the last elem?\n");
+		if (!tok) {
+			printf("add index.html to end?\n");
 			strncpy(reqline[1], "index.html", 11);
-		else
+		} else {
+			printf("add someting to end?\n");
 			memmove(reqline[1], tok, strlen(reqline[1]));
+		}
 	}
+	printf("Done determining root\n");
 }
 
 void compute_flags(int argc, char *const argv[], char **port) {
@@ -134,7 +141,7 @@ void respond(char *reqline[], int client_fd) {
 	close(client_fd);
 }
 
-void determine_response(char *msg, int client_fd, char * const working_directory) {
+void determine_response(char *msg, int client_fd, char *working_directory) {
 	char **reqline = malloc(3 * sizeof(char *));
 
 	if (!reqline)
@@ -156,6 +163,8 @@ void determine_response(char *msg, int client_fd, char * const working_directory
 
 	strncpy(reqline[2], tok, (strlen(tok) + 1));
 
+	printf("Done copying\nThis is r[0]: %s\nThis is r[1]: %s\nThis is r[2]: %s\n", reqline[0], reqline[1], reqline[2]);
+
 	if (!is_valid_request(reqline)) {
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqline[0],
@@ -163,14 +172,19 @@ void determine_response(char *msg, int client_fd, char * const working_directory
 		send(client_fd, "HTTP/1.1 400 Bad Request\n", 25, 0);
 		close(client_fd);
 	} else {
+		printf("Starting determine root\n");
 		determine_root(reqline);
-		strncat(working_directory, reqline[1], (strlen(reqline[1]) * sizeof(char)));
+		printf("Concatenating determined root\n");
+		printf("This is wd: %s\n This is r[1]: %s\n", working_directory, reqline[1]);
+		strncat(working_directory, reqline[1], strlen(reqline[1]));
+		printf("successful determine response\n");
 		respond(reqline, client_fd);
 	}
 
 	for (int i = 0; i < 3; i++)
 		free(reqline[i]);
 	free(reqline);
+	printf("Reqline done free\n");
 }
 
 void server_log(const char * const msg) {
@@ -240,7 +254,7 @@ void get_socket(int *socketfd, struct addrinfo *serviceinfo) {
 	}
 }
 
-void handle_sigint(int arg) { // const?
+void handle_sigint(int arg) {
 	arg = 0;
 	sigint_flag = arg;
 }
@@ -258,11 +272,13 @@ void init_signals(void) {
 
 int main(int argc, const char ** const argv) {
 	const char * const port = "8888";
-	char *ipv4_address = "", *initwd = "";
+	char *ipv4_address = "", *initwd = "", * const doc_root = calloc(PATH_MAX, sizeof(char));
 	int status = 0, socketfd = 0, new_fd = 0; // File descriptor proper names? Masterfd, newfd?
 	struct sockaddr_storage their_addr;
 	struct addrinfo addressinfo, *serviceinfo;
 	socklen_t sin_size;
+
+	strcpy(doc_root, "/home/elliott/Github/C-Server-Collection/single-HTTP/");
 
 	init_signals();
 	if (!is_valid_numberof_arguments(argc))
