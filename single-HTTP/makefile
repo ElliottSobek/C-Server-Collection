@@ -1,19 +1,18 @@
 CC = gcc
 
-CFLAGS = -Wall -Wextra -std=c99 -g
+CFLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -O0 -g
 
-.PHONY: all memcheck clean
+LDLIBS = -D_POSIX_C_SOURCE=200112L
+
+.PHONY: all clean
 
 all: main
 
 main: main.o
-	$(CC) $(CFLAGS) main.o -o single-HTTP
+	$(CC) $(CFLAGS) $< -o single-HTTP
 
 main.o: main.c
-	$(CC) $(CFLAGS) main.c -D_POSIX_C_SOURCE=200112L -c
+	$(CC) $(CFLAGS) $< $(LDLIBS) -c
 
 clean:
 	rm *.o single-HTTP
-
-memcheck:
-	valgrind --leak-check=full --track-origins=yes -v ./single-HTTP
