@@ -27,7 +27,7 @@
 *.i*86
 *.x86_64
 *.hex
-single-HTTP
+single-HTTP/single-HTTP
 
 # Debug files
 *.dSYM/
