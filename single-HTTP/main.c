@@ -11,39 +11,43 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#define DEFAULT_PORT "8888"
 #define BACKLOG 10
 #define PACKET_MAX 1024
 #define ASC_TIME_MAX 24
 #define MSG_LEN 4096
+#define NT_LEN 1
+#define ROOT_DIR_LEN 53
+#define GET_REQ_LEN 3
+#define HTTP_VER_LEN 8
+#define DEFAULT_PAGE_LEN 10
+#define CODE_400_LEN 25
+#define CODE_404_LEN 23
+#define CODE_403_LEN 27
+#define PORT_MIN 0
+#define PORT_MAX 65536
 
 /* Is it better to have HTTP response messages as globals or defined macros?*/
 // Better to have responses as one line or multiline?
-const char * const OK = "HTTP/1.1 200 OK";
-
-const char * const NOT_FOUND = "HTTP/1.1 404 NOT FOUND";
-
-const char * const FORBIDDEN = "HTTP/1.1 403 FORBIDDEN";
-
-const char * const BAD_REQUEST = "HTTP/1.1 400 BAD REQUEST";
-
-const char * const CREATED = "HTTP/1.1 201 CREATED";
-
-const char * const TIMEOUT = "HTTP/1.1 408 REQUEST TIME-OUT";
-
-const char * const SERVER_ERROR = "HTTP/1.1 500 INTERNAL SERVER ERROR";
-
-const char * const log_root = "/home/elliott/github/C-Server-Collection/single-HTTP/";
+const char *const OK = "HTTP/1.1 200 OK",
+		   *const NOT_FOUND = "HTTP/1.1 404 NOT FOUND",
+		   *const FORBIDDEN = "HTTP/1.1 403 FORBIDDEN",
+		   *const BAD_REQUEST = "HTTP/1.1 400 BAD REQUEST",
+		   *const CREATED = "HTTP/1.1 201 CREATED",
+		   *const TIMEOUT = "HTTP/1.1 408 REQUEST TIME-OUT",
+		   *const SERVER_ERROR = "HTTP/1.1 500 INTERNAL SERVER ERROR",
+		   *const log_root = "/home/elliott/github/C-Server-Collection/single-HTTP/";
 
 // char *132doc_root = "/home/elliott/Github/C-Server-Collection/single-HTTP/"; // Was const after pointer
 
 int sigint_flag = 1;
-char verbose_flag = 1;
+short verbose_flag = 1;
 
 bool is_valid_listen(int socketfd) {
 	return listen(socketfd, BACKLOG) == 0;
 }
 
-bool is_valid_address(int status) {
+bool is_valid_address(const int status) {
 	return status == 0;
 }
 
@@ -51,33 +55,33 @@ bool is_valid_numberof_arguments(const int argc) {
 	return argc == 1;
 }
 
-bool is_valid_port(const char * const port) {
+bool is_valid_port(const char *const port) {
 	const int port_num = atoi(port);
 
-	return ((port_num > 0) || (port_num < 65536)); // Is this bool expression correct?
+	return ((port_num > PORT_MIN) || (port_num < PORT_MAX)); // Is this bool expression correct?
 	// Maybe use && boolean...?
 }
 
-bool is_valid_request(char *reqline[]) {
-	if (strncmp(reqline[0], "GET", 3) != 0)
+bool is_valid_request(char **const reqline) {
+	if (strncmp(reqline[0], "GET", GET_REQ_LEN) != 0)
 		return false;
-	if ((strncmp(reqline[2], "HTTP/1.0", 8) != 0) && (
-		strncmp(reqline[2], "HTTP/1.1", 8) != 0)) {
+	if ((strncmp(reqline[2], "HTTP/1.0", HTTP_VER_LEN) != 0) && (
+		strncmp(reqline[2], "HTTP/1.1", HTTP_VER_LEN) != 0))
 		return false;
-	}
 	return true;
 }
 
-void determine_root(char *reqline[]) {
+void determine_root(char **reqline) {
 	if (strncmp(reqline[1], "/\0", 2) == 0) {
 		printf("asked for /\n");
-		strncpy(reqline[1], "index.html", 11);
+		strncpy(reqline[1], "index.html", DEFAULT_PAGE_LEN);
 	} else {
 		char *tok = strtok(reqline[1], "/");
+
 		printf("Get the last elem?\n");
 		if (!tok) {
 			printf("add index.html to end?\n");
-			strncpy(reqline[1], "index.html", 11);
+			strncpy(reqline[1], "index.html", DEFAULT_PAGE_LEN);
 		} else {
 			printf("add someting to end?\n");
 			memmove(reqline[1], tok, strlen(reqline[1]));
@@ -86,8 +90,8 @@ void determine_root(char *reqline[]) {
 	printf("Done determining root\n");
 }
 
-void compute_flags(int argc, char *const argv[], char **port) {
-	int c = 0;
+void compute_flags(int argc, char **const argv, const char **const port, short *verbose_flag) {
+	int c;
 
 	while ((c = getopt(argc, argv, "vp:")) != -1) {
 		switch (c) {
@@ -95,29 +99,30 @@ void compute_flags(int argc, char *const argv[], char **port) {
 			*port = optarg;
 			break;
 		case 'v':
-			verbose_flag = 1;
+			*verbose_flag = 1;
 			break;
 		case '?':
 			if (optopt == 'p')
-				exit(EXIT_FAILURE);
+				exit(EXIT_FAILURE); // Redundant?
 				// terminate("");
 		default:
-			exit(EXIT_FAILURE);
+			exit(EXIT_FAILURE); // Redundant?
 			// terminate("Unknonwn flag.");
 		}
 	}
 }
 
-void respond(char *reqline[], int client_fd) {
+// Access bad?
+void respond(char **const reqline, int client_fd) {
 	if (access(reqline[1], F_OK | R_OK) == 0) {
 		if (verbose_flag)
 			printf("GET %s [200 OK]\n", reqline[1]);
 		send(client_fd, "HTTP/1.1 200 OK\n\n", 17, 0);
 		FILE *fp = fopen(reqline[1], "r");
-		char *f_contents = malloc(PACKET_MAX);
+		char *f_contents = malloc(PACKET_MAX + NT_LEN);
 
 		// check_malloc(f_contents);
-		size_t nbytes = 0;
+		size_t nbytes;
 
 		while ((nbytes = fread(f_contents, sizeof(char), PACKET_MAX, fp)) > 0)
 			send(client_fd, f_contents, nbytes, 0);
@@ -131,38 +136,38 @@ void respond(char *reqline[], int client_fd) {
 	if (access(reqline[1], F_OK) == -1) {
 		if (verbose_flag)
 			printf("GET %s [404 Not Found]\n", reqline[1]);
-		send(client_fd, "HTTP/1.1 404 Not Found\n", 23, 0);
+		send(client_fd, "HTTP/1.1 404 Not Found\n", CODE_404_LEN, 0);
 		close(client_fd);
 		return;
 	}
 
 	if (verbose_flag)
 		printf("GET %s [403 Access Denied]\n", reqline[1]);
-	send(client_fd, "HTTP/1.1 403 Access Denied\n", 27, 0);
+	send(client_fd, "HTTP/1.1 403 Access Denied\n", CODE_403_LEN, 0);
 	close(client_fd);
 }
 
 void determine_response(char *msg, int client_fd, char *working_directory) {
-	char **reqline = malloc(3 * sizeof(char *));
+	char **const reqline = malloc(3 * sizeof(char *));
 
 	if (!reqline)
 		exit(EXIT_FAILURE);
 		// terminate("");
 
 	for (int i = 0; i < 3; i++) {
-		reqline[i] = calloc(128, sizeof(char));
+		reqline[i] = calloc(128 + NT_LEN, sizeof(char));
 		// check_malloc(reqline[i]);
 	}
 
 	char *tok = strtok(msg, " \t\n");
 
-	strncpy(reqline[0], tok, (strlen(tok) + 1));
+	strncpy(reqline[0], tok, (strlen(tok) + NT_LEN));
 	tok = strtok(NULL, " \t");
 
-	strncpy(reqline[1], tok, (strlen(tok) + 1));
+	strncpy(reqline[1], tok, (strlen(tok) + NT_LEN));
 	tok = strtok(NULL, " \t\n");
 
-	strncpy(reqline[2], tok, (strlen(tok) + 1));
+	strncpy(reqline[2], tok, (strlen(tok) + NT_LEN));
 
 	printf("Done copying\nThis is r[0]: %s\nThis is r[1]: %s\nThis is r[2]: %s\n", reqline[0], reqline[1], reqline[2]);
 
@@ -170,7 +175,7 @@ void determine_response(char *msg, int client_fd, char *working_directory) {
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqline[0],
 			       reqline[1]);
-		send(client_fd, "HTTP/1.1 400 Bad Request\n", 25, 0);
+		send(client_fd, "HTTP/1.1 400 Bad Request\n", CODE_400_LEN, 0);
 		close(client_fd);
 	} else {
 		printf("Starting determine root\n");
@@ -188,20 +193,22 @@ void determine_response(char *msg, int client_fd, char *working_directory) {
 	printf("Reqline done free\n");
 }
 
-void server_log(const char * const msg) {
+// Feature need, rolling log files
+void server_log(const char *const msg) {
 	time_t cur_time = time(NULL);
-	char *log_dir = calloc(PATH_MAX, sizeof(char));
-	char *log_archive = calloc(ASC_TIME_MAX + strlen(msg) + 4, sizeof(char));
+	char *log_dir = calloc(PATH_MAX + NT_LEN, sizeof(char)),
+		 *log_archive = calloc(ASC_TIME_MAX + strlen(msg) + 4 + NT_LEN, sizeof(char));
 
 	strncpy(log_dir, log_root, PATH_MAX);
 	strncat(log_dir, "server.log", 10);
+	FILE *fp = fopen(log_dir, "a");
+
+	// use fprintf and reduce strncat calls?
 	strncpy(log_archive, asctime(localtime(&cur_time)), ASC_TIME_MAX);
 	strncat(log_archive, " ", 1);
 	strncat(log_archive, msg, strlen(msg));
 	strncat(log_archive, "\r\n", 2);
-	FILE *fp = fopen(log_dir, "a");
-
-	fputs(log_archive, fp);
+	fputs(log_archive, fp); // Use fprintf?
 	fclose(fp);
 	free(log_dir);
 	free(log_archive);
@@ -222,7 +229,7 @@ void init_addrinfo(struct addrinfo *addressinfo) {
 }
 
 void get_socket(int *socketfd, struct addrinfo *serviceinfo) {
-	short yes = 1;
+	const short yes = 1;
 	struct addrinfo *p;
 
 	for (p = serviceinfo; p; p = p->ai_next) {
@@ -264,17 +271,21 @@ void init_signals(void) {
 	struct sigaction new_action_int;
 
 	new_action_int.sa_handler = handle_sigint; // Look in man page
+
 	sigemptyset(&new_action_int.sa_mask);
 	new_action_int.sa_flags = 0;
+
 	if (sigaction(SIGINT, &new_action_int, NULL) == -1)
 		// terminate(strerror(errno));
 		exit(EXIT_FAILURE);
 }
 
-int main(int argc, const char ** const argv) {
-	const char * const port = "8888";
-	char *ipv4_address = "", *initwd = "", * const doc_root = calloc(PATH_MAX, sizeof(char));
-	int status = 0, socketfd = 0, new_fd = 0; // File descriptor proper names? Masterfd, newfd?
+int main(int argc, char **const argv) {
+	const char *port = DEFAULT_PORT;
+	char *initwd,
+		 *ipv4_address = "",
+		 *const doc_root = calloc(PATH_MAX + NT_LEN, sizeof(char));
+	int status, socketfd, new_fd; // File descriptor proper names? Masterfd, newfd?
 	struct sockaddr_storage recv_addr;
 	struct addrinfo addressinfo, *serviceinfo;
 	socklen_t sin_size = sizeof(recv_addr);
@@ -282,7 +293,7 @@ int main(int argc, const char ** const argv) {
 	init_signals();
 	if (!is_valid_numberof_arguments(argc))
 		exit(EXIT_FAILURE);
-//	compute_flags(argc, argv, &port, &verbose_flag);
+	compute_flags(argc, argv, &port, &verbose_flag);
 	if (!is_valid_port(port))
 		exit(EXIT_FAILURE);
 
@@ -303,15 +314,15 @@ int main(int argc, const char ** const argv) {
 
 	if (verbose_flag)
 		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, initwd);
-	
-	char *msg = malloc(MSG_LEN * sizeof(char));
+
+	char *msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 	while (sigint_flag) {
-		strncpy(doc_root, "/home/elliott/Github/C-Server-Collection/single-HTTP/", 53);
-		// char *workingDirectory = calloc(PATH_MAX, sizeof(char)); // Can this be put on stack?
+		strncpy(doc_root, "/home/elliott/Github/C-Server-Collection/single-HTTP/", ROOT_DIR_LEN);
+		// char *workingDirectory = calloc(PATH_MAX + NT_LEN, sizeof(char)); // Can this be put on stack?
 
 //		check_malloc(workingDirectory);
-		// char *msg = malloc(MSG_LEN * sizeof(char));
+		// char *msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 //		check_malloc(msg);
 
