@@ -1,3 +1,5 @@
 GET / HTTP/1.1
 GET /index.html HTTP/1.1
-GET /home/contactus.html HTTP/1.1
+GET /constact-us.html HTTP/1.1
+GET /login.php HTTP/1.1
+GET /home/contact-us.html HTTP/1.1
