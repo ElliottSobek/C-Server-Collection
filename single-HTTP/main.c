@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#define ROOT_DIR "/home/elliott/Github/C-Server-Collection/single-HTTP/"
 #define DEFAULT_PORT "8888"
 #define BACKLOG 10
 #define PACKET_MAX 1024
@@ -21,6 +22,7 @@
 #define GET_REQ_LEN 3
 #define HTTP_VER_LEN 8
 #define DEFAULT_PAGE_LEN 10
+#define CODE_200_LEN 17
 #define CODE_400_LEN 25
 #define CODE_404_LEN 23
 #define CODE_403_LEN 27
@@ -29,13 +31,13 @@
 
 /* Is it better to have HTTP response messages as globals or defined macros?*/
 // Better to have responses as one line or multiline?
-const char *const OK = "HTTP/1.1 200 OK",
-		   *const NOT_FOUND = "HTTP/1.1 404 NOT FOUND",
-		   *const FORBIDDEN = "HTTP/1.1 403 FORBIDDEN",
-		   *const BAD_REQUEST = "HTTP/1.1 400 BAD REQUEST",
-		   *const CREATED = "HTTP/1.1 201 CREATED",
-		   *const TIMEOUT = "HTTP/1.1 408 REQUEST TIME-OUT",
-		   *const SERVER_ERROR = "HTTP/1.1 500 INTERNAL SERVER ERROR",
+const char *const OK = "HTTP/1.1 200 OK\n",
+		   *const NOT_FOUND = "HTTP/1.1 404 NOT FOUND\n",
+		   *const FORBIDDEN = "HTTP/1.1 403 FORBIDDEN\n",
+		   *const BAD_REQUEST = "HTTP/1.1 400 BAD REQUEST\n",
+		   *const CREATED = "HTTP/1.1 201 CREATED\n",
+		   *const TIMEOUT = "HTTP/1.1 408 REQUEST TIME-OUT\n",
+		   *const SERVER_ERROR = "HTTP/1.1 500 INTERNAL SERVER ERROR\n",
 		   *const log_root = "/home/elliott/github/C-Server-Collection/single-HTTP/";
 
 // char *132doc_root = "/home/elliott/Github/C-Server-Collection/single-HTTP/"; // Was const after pointer
@@ -43,7 +45,7 @@ const char *const OK = "HTTP/1.1 200 OK",
 int sigint_flag = 1;
 short verbose_flag = 1;
 
-bool is_valid_listen(int socketfd) {
+bool is_valid_listen(const int socketfd) {
 	return listen(socketfd, BACKLOG) == 0;
 }
 
@@ -90,7 +92,7 @@ void determine_root(char **reqline) {
 	printf("Done determining root\n");
 }
 
-void compute_flags(int argc, char **const argv, const char **const port, short *verbose_flag) {
+void compute_flags(const int argc, char **const argv, const char **const port, short *const verbose_flag) {
 	int c;
 
 	while ((c = getopt(argc, argv, "vp:")) != -1) {
@@ -113,11 +115,11 @@ void compute_flags(int argc, char **const argv, const char **const port, short *
 }
 
 // Access bad?
-void respond(char **const reqline, int client_fd) {
+void respond(char **const reqline, const int client_fd) {
 	if (access(reqline[1], F_OK | R_OK) == 0) {
 		if (verbose_flag)
 			printf("GET %s [200 OK]\n", reqline[1]);
-		send(client_fd, "HTTP/1.1 200 OK\n\n", 17, 0);
+		send(client_fd, OK, CODE_200_LEN, 0);
 		FILE *fp = fopen(reqline[1], "r");
 		char *f_contents = malloc(PACKET_MAX + NT_LEN);
 
@@ -136,18 +138,18 @@ void respond(char **const reqline, int client_fd) {
 	if (access(reqline[1], F_OK) == -1) {
 		if (verbose_flag)
 			printf("GET %s [404 Not Found]\n", reqline[1]);
-		send(client_fd, "HTTP/1.1 404 Not Found\n", CODE_404_LEN, 0);
+		send(client_fd, NOT_FOUND, CODE_404_LEN, 0);
 		close(client_fd);
 		return;
 	}
 
 	if (verbose_flag)
 		printf("GET %s [403 Access Denied]\n", reqline[1]);
-	send(client_fd, "HTTP/1.1 403 Access Denied\n", CODE_403_LEN, 0);
+	send(client_fd, FORBIDDEN, CODE_403_LEN, 0);
 	close(client_fd);
 }
 
-void determine_response(char *msg, int client_fd, char *working_directory) {
+void determine_response(char *msg, const int client_fd, char *working_directory) {
 	char **const reqline = malloc(3 * sizeof(char *));
 
 	if (!reqline)
@@ -175,7 +177,7 @@ void determine_response(char *msg, int client_fd, char *working_directory) {
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqline[0],
 			       reqline[1]);
-		send(client_fd, "HTTP/1.1 400 Bad Request\n", CODE_400_LEN, 0);
+		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
 		close(client_fd);
 	} else {
 		printf("Starting determine root\n");
@@ -214,23 +216,23 @@ void server_log(const char *const msg) {
 	free(log_archive);
 }
 
-void *get_in_addr(struct sockaddr *sa) {
+void *get_in_addr(const struct sockaddr *const sa) {
 	if (sa->sa_family == AF_INET)
 		return &(((struct sockaddr_in *)sa)->sin_addr);
 
 	return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-void init_addrinfo(struct addrinfo *addressinfo) {
+void init_addrinfo(struct addrinfo *const addressinfo) {
 	memset(addressinfo, 0, sizeof(*addressinfo));
 	(*addressinfo).ai_family = AF_INET;
 	(*addressinfo).ai_socktype = SOCK_STREAM; // TCP
 	(*addressinfo).ai_flags = AI_PASSIVE | AI_V4MAPPED; // Correct flags?
 }
 
-void get_socket(int *socketfd, struct addrinfo *serviceinfo) {
+void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 	const short yes = 1;
-	struct addrinfo *p;
+	const struct addrinfo *p;
 
 	for (p = serviceinfo; p; p = p->ai_next) {
 		*socketfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
@@ -262,8 +264,7 @@ void get_socket(int *socketfd, struct addrinfo *serviceinfo) {
 	}
 }
 
-void handle_sigint(int arg) {
-	arg = 0;
+void handle_sigint(const int arg) {
 	sigint_flag = arg;
 }
 
@@ -280,10 +281,10 @@ void init_signals(void) {
 		exit(EXIT_FAILURE);
 }
 
-int main(int argc, char **const argv) {
+int main(const int argc, char **const argv) {
 	const char *port = DEFAULT_PORT;
 	char *initwd,
-		 *ipv4_address = "",
+		 *const ipv4_address = "",
 		 *const doc_root = calloc(PATH_MAX + NT_LEN, sizeof(char));
 	int status, socketfd, new_fd; // File descriptor proper names? Masterfd, newfd?
 	struct sockaddr_storage recv_addr;
@@ -315,10 +316,10 @@ int main(int argc, char **const argv) {
 	if (verbose_flag)
 		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, initwd);
 
-	char *msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
+	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 	while (sigint_flag) {
-		strncpy(doc_root, "/home/elliott/Github/C-Server-Collection/single-HTTP/", ROOT_DIR_LEN);
+		strncpy(doc_root, ROOT_DIR, ROOT_DIR_LEN);
 		// char *workingDirectory = calloc(PATH_MAX + NT_LEN, sizeof(char)); // Can this be put on stack?
 
 //		check_malloc(workingDirectory);
@@ -341,8 +342,8 @@ int main(int argc, char **const argv) {
 		if (recv(new_fd, msg, MSG_LEN, 0) < 0) { // Look into man page
 			perror("recv"); // Log it/ignore?
 			continue;
-		} else
-			printf("RECIEVE PACKET: SUCCESS\n");
+		}
+		printf("RECIEVE PACKET: SUCCESS\n");
 		determine_response(msg, new_fd, doc_root);
 	}
 	free(initwd);
