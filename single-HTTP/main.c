@@ -1,3 +1,5 @@
+// Bug with random get???
+
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -161,22 +163,32 @@ void determine_response(char *msg, const int client_fd, char *working_directory)
 		// check_malloc(reqline[i]);
 	}
 
+	printf("This is message in determine response: [%s]\n", msg);
+
 	char *tok = strtok(msg, " \t\n");
+	if (!tok)
+		goto BAD;
+	printf("This is tok 1 in determine response: %s\n", tok);
 
 	strncpy(reqline[0], tok, (strlen(tok) + NT_LEN));
 	tok = strtok(NULL, " \t");
+	if (!tok)
+		goto BAD;
+	printf("This is tok 2 in determine response: %s\n", tok);
 
 	strncpy(reqline[1], tok, (strlen(tok) + NT_LEN));
 	tok = strtok(NULL, " \t\n");
+	if (!tok)
+		goto BAD;
+	printf("This is tok 3 in determine response: %s\n", tok);
 
 	strncpy(reqline[2], tok, (strlen(tok) + NT_LEN));
 
 	printf("Done copying\nThis is r[0]: %s\nThis is r[1]: %s\nThis is r[2]: %s\n", reqline[0], reqline[1], reqline[2]);
 
 	if (!is_valid_request(reqline)) {
-		if (verbose_flag)
-			printf("%s %s [400 Bad Request]\n", reqline[0],
-			       reqline[1]);
+		BAD: if (verbose_flag)
+			     printf("%s %s [400 Bad Request]\n", reqline[0], reqline[1]);
 		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
 		close(client_fd);
 	} else {
@@ -264,7 +276,8 @@ void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 	}
 }
 
-void handle_sigint(const int arg) {
+void handle_sigint(int arg) {
+	arg = 0;
 	sigint_flag = arg;
 }
 
@@ -318,8 +331,10 @@ int main(const int argc, char **const argv) {
 
 	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
+	strncpy(doc_root, ROOT_DIR, ROOT_DIR_LEN);
+
 	while (sigint_flag) {
-		strncpy(doc_root, ROOT_DIR, ROOT_DIR_LEN);
+		doc_root[ROOT_DIR_LEN] = '\0';
 		// char *workingDirectory = calloc(PATH_MAX + NT_LEN, sizeof(char)); // Can this be put on stack?
 
 //		check_malloc(workingDirectory);
