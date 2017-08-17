@@ -116,12 +116,31 @@ void compute_flags(const int argc, char **const argv, const char **const port, s
 	}
 }
 
+void do_php(const char *const script_path, const int client_fd) {
+	char *const script = calloc(PATH_MAX + NT_LEN, sizeof(char));
+
+	dup2(client_fd, STDOUT_FILENO);
+	strncpy(script, "GATEWAY_INTERFACE=CGI/1.1SCRIPT_FILENAME=", 41);
+	strncat(script, script_path, strlen(script_path));
+	strncat(script, "QUERY_STRING=REQUEST_METHOD=GETREDIRECT_STATUS=trueSERVER_PROTOCOL=HTTP/1.1REMOTE_HOST=127.0.0.1", 96);
+	putenv(script);
+	execl("/usr/bin/php", "/usr/bin/php", script_path, (char *) NULL);
+	free(script);
+}
+
 // Access bad?
 void respond(char **const reqline, const int client_fd) {
 	if (access(reqline[1], F_OK | R_OK) == 0) {
+		const char *extension = "";
 		if (verbose_flag)
 			printf("GET %s [200 OK]\n", reqline[1]);
 		send(client_fd, OK, CODE_200_LEN, 0);
+		extension = strrchr(reqline[1], '.'); // Change here
+		if (strncmp(extension, ".php", 4) == 0) {
+			do_php(reqline[1], client_fd);
+			close(client_fd);
+			return;
+		}
 		FILE *fp = fopen(reqline[1], "r");
 		char *f_contents = malloc(PACKET_MAX + NT_LEN);
 
