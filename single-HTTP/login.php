@@ -5,12 +5,7 @@
 		<meta charset="utf-8"></meta>
 	</head>
 	<body>
-		<div>
-			<h1>Test</h1>
-		</div>
-		<?php
-			echo "TEST";
-		?>
+		<?php echo "IT WORKS"; ?>
 	</body>
 	<footer>
 		<a href="index.html">Home</a>
