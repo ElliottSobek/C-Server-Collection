@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 /*This code tests the const qualifier*/
@@ -18,5 +19,14 @@ int main(void) {
 
 	char *g = getwd(NULL);
 	printf("This is g: %s\n", g);
+
+	int yes = -1;
+	if (!yes) {
+		printf("Yes pass\n");
+	} else {
+		printf("Yes fail\n");
+	}
 	return 0;
 }
+
+// TODO SOUND
