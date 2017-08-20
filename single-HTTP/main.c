@@ -32,7 +32,6 @@
 #define PORT_MAX 65536
 
 /* Is it better to have HTTP response messages as globals or defined macros?*/
-// Better to have responses as one line or multiline?
 const char *const OK = "HTTP/1.1 200 OK\n\n",
 		   *const NOT_FOUND = "HTTP/1.1 404 NOT FOUND\n\n",
 		   *const FORBIDDEN = "HTTP/1.1 403 FORBIDDEN\n\n",
@@ -41,8 +40,6 @@ const char *const OK = "HTTP/1.1 200 OK\n\n",
 		   *const TIMEOUT = "HTTP/1.1 408 REQUEST TIME-OUT\n\n",
 		   *const SERVER_ERROR = "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n",
 		   *const log_root = "/home/elliott/Github/C-Server-Collection/single-HTTP/";
-
-// char *132doc_root = "/home/elliott/Github/C-Server-Collection/single-HTTP/"; // Was const after pointer
 
 int sigint_flag = 1;
 short verbose_flag = 1;
@@ -55,7 +52,7 @@ bool is_valid_address(const int status) {
 	return status == 0;
 }
 
-bool is_valid_numberof_arguments(const int argc) {
+bool is_valid_number_of_arguments(const int argc) {
 	return argc == 1;
 }
 
@@ -324,7 +321,7 @@ int main(const int argc, char **const argv) {
 	socklen_t sin_size = sizeof(recv_addr);
 
 	init_signals();
-	if (!is_valid_numberof_arguments(argc))
+	if (!is_valid_number_of_arguments(argc))
 		exit(EXIT_FAILURE);
 	compute_flags(argc, argv, &port, &verbose_flag);
 	if (!is_valid_port(port))
