@@ -5,7 +5,7 @@
 		<meta charset="utf-8"></meta>
 	</head>
 	<body>
-		<?php echo "IT WORKS"; ?>
+		<?php echo "IT WORKS\n"; ?>
 	</body>
 	<footer>
 		<a href="index.html">Home</a>
