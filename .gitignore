@@ -28,6 +28,7 @@
 *.x86_64
 *.hex
 single-HTTP/single-HTTP
+testing/testing
 
 # Debug files
 *.dSYM/
