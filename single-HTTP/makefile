@@ -2,7 +2,7 @@ CC = gcc
 
 CFLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -O0 -g
 
-LDLIBS = -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE
+LDLIBS = -D_POSIX_C_SOURCE=200112L
 
 .PHONY: all clean
 
