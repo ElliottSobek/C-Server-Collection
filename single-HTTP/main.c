@@ -42,7 +42,7 @@ const char *const OK = "HTTP/1.1 200 OK\n\n",
 		   *const log_root = "/home/elliott/Github/C-Server-Collection/single-HTTP/";
 
 int sigint_flag = 1;
-short verbose_flag = 1;
+bool verbose_flag = false;
 
 bool is_valid_listen(const int socketfd) {
 	return listen(socketfd, BACKLOG) == 0;
@@ -90,7 +90,7 @@ void determine_root(char **reqline) {
 	printf("Done determining root\n");
 }
 
-void compute_flags(const int argc, char **const argv, const char **const port, short *const verbose_flag) {
+void compute_flags(const int argc, char **const argv, const char **const port, bool *v_flag) {
 	int c;
 
 	while ((c = getopt(argc, argv, "vp:")) != -1) {
@@ -99,15 +99,10 @@ void compute_flags(const int argc, char **const argv, const char **const port, s
 			*port = optarg;
 			break;
 		case 'v':
-			*verbose_flag = 1;
+			*v_flag = true;
 			break;
 		case '?':
-			if (optopt == 'p')
-				exit(EXIT_FAILURE); // Redundant?
-				// terminate("");
-		default:
-			exit(EXIT_FAILURE); // Redundant?
-			// terminate("Unknonwn flag.");
+			exit(EXIT_FAILURE);
 		}
 	}
 }
