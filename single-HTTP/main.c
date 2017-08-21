@@ -59,8 +59,7 @@ bool is_valid_number_of_arguments(const int argc) {
 bool is_valid_port(const char *const port) {
 	const int port_num = atoi(port);
 
-	return ((port_num > PORT_MIN) || (port_num < PORT_MAX)); // Is this bool expression correct?
-	// Maybe use && boolean...?
+	return ((port_num > PORT_MIN) && (port_num < PORT_MAX));
 }
 
 bool is_valid_request(char **const reqline) {
