@@ -320,26 +320,36 @@ int main(const int argc, char **const argv) {
 	socklen_t sin_size = sizeof(recv_addr);
 
 	init_signals();
-	if (!is_valid_number_of_arguments(argc))
+	if (!is_valid_number_of_arguments(argc)) {
+		fprintf(stderr, "Usage: ./single-HTTP [-v] [-p <unsigned int>]\n");
 		exit(EXIT_FAILURE);
+	}
 	compute_flags(argc, argv, &port, &verbose_flag);
-	if (!is_valid_port(port))
+	if (!is_valid_port(port)) {
+		fprintf(stderr, "Error: Invalid port number\n");
 		exit(EXIT_FAILURE);
+	}
 
 	init_addrinfo(&addressinfo);
 	status = getaddrinfo(NULL, port, &addressinfo, &serviceinfo);
 
-	if (!is_valid_address(status))
+	if (!is_valid_address(status)) {
+		fprintf(stderr, "Error: Invalid address\n");
 		exit(EXIT_FAILURE);
+	}
 
 	get_socket(&socketfd, serviceinfo);
 
-	if (!is_valid_listen(socketfd))
+	if (!is_valid_listen(socketfd)) {
+		fprintf(stderr, "Error: Invalid listen\n");
 		exit(EXIT_FAILURE);
+	}
 
 	initwd = getcwd(NULL, PATH_MAX);
-	if (!initwd)
+	if (!initwd) {
+		fprintf(stderr, "Error: Invalid working directory\n");
 		exit(EXIT_FAILURE);
+	}
 
 	if (verbose_flag)
 		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, initwd);
