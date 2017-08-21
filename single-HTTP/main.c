@@ -15,6 +15,15 @@
 
 #define ROOT_DIR "/home/elliott/Github/C-Server-Collection/single-HTTP/"
 #define DEFAULT_PORT "8888"
+#define OK "HTTP/1.1 200 OK\n\n"
+#define NOT_FOUND "HTTP/1.1 404 NOT FOUND\n\n"
+#define FORBIDDEN "HTTP/1.1 403 FORBIDDEN\n\n"
+#define BAD_REQUEST "HTTP/1.1 400 BAD REQUEST\n\n"
+#define CREATED "HTTP/1.1 201 CREATED\n\n"
+#define TIMEOUT "HTTP/1.1 408 REQUEST TIME-OUT\n\n"
+#define SERVER_ERROR "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n"
+#define LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/"
+
 #define BACKLOG 10
 #define MAX_ARGS 5
 #define PACKET_MAX 1024
@@ -35,16 +44,6 @@
 #define REQLINE_AMT 3
 #define PORT_MIN 0
 #define PORT_MAX 65536
-
-/* Is it better to have HTTP response messages as globals or defined macros?*/
-const char *const OK = "HTTP/1.1 200 OK\n\n",
-		   *const NOT_FOUND = "HTTP/1.1 404 NOT FOUND\n\n",
-		   *const FORBIDDEN = "HTTP/1.1 403 FORBIDDEN\n\n",
-		   *const BAD_REQUEST = "HTTP/1.1 400 BAD REQUEST\n\n",
-		   *const CREATED = "HTTP/1.1 201 CREATED\n\n",
-		   *const TIMEOUT = "HTTP/1.1 408 REQUEST TIME-OUT\n\n",
-		   *const SERVER_ERROR = "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n",
-		   *const log_root = "/home/elliott/Github/C-Server-Collection/single-HTTP/";
 
 int sigint_flag = 1;
 bool verbose_flag = false;
@@ -228,7 +227,7 @@ void server_log(const char *const msg) {
 	char *log_dir = calloc(PATH_MAX + NT_LEN, sizeof(char)),
 		 *log_archive = calloc(ASC_TIME_MAX + strlen(msg) + 4 + NT_LEN, sizeof(char));
 
-	strncpy(log_dir, log_root, PATH_MAX);
+	strncpy(log_dir, LOG_ROOT, PATH_MAX);
 	strncat(log_dir, "server.log", 10);
 	FILE *fp = fopen(log_dir, "a");
 
@@ -359,16 +358,7 @@ int main(const int argc, char **const argv) {
 
 	while (sigint_flag) {
 		doc_root[ROOT_DIR_LEN] = '\0';
-		// char *workingDirectory = calloc(PATH_MAX + NT_LEN, sizeof(char)); // Can this be put on stack?
 
-//		check_malloc(workingDirectory);
-		// char *msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
-
-//		check_malloc(msg);
-
-		// strncpy(workingDirectory, initwd, (strlen(initwd) + 1));
-		// strncat(workingDirectory, "/", 1);
-		// sin_size = sizeof(recv_addr);
 		new_fd = accept(socketfd, (struct sockaddr *)&recv_addr, &sin_size);
 
 		if (new_fd == -1) {
