@@ -16,6 +16,7 @@
 #define ROOT_DIR "/home/elliott/Github/C-Server-Collection/single-HTTP/"
 #define DEFAULT_PORT "8888"
 #define BACKLOG 10
+#define MAX_ARGS 5
 #define PACKET_MAX 1024
 #define ASC_TIME_MAX 24
 #define MSG_LEN 4096
@@ -23,11 +24,15 @@
 #define ROOT_DIR_LEN 53
 #define GET_REQ_LEN 3
 #define HTTP_VER_LEN 8
+#define PHP_EXT_LEN 4
+#define MDEFAULT_PAGE_LEN 2
 #define DEFAULT_PAGE_LEN 10
 #define CODE_200_LEN 17
 #define CODE_400_LEN 25
 #define CODE_404_LEN 23
 #define CODE_403_LEN 27
+#define REQLINE_LEN 128
+#define REQLINE_AMT 3
 #define PORT_MIN 0
 #define PORT_MAX 65536
 
@@ -53,7 +58,7 @@ bool is_valid_address(const int status) {
 }
 
 bool is_valid_number_of_arguments(const int argc) {
-	return argc < 5;
+	return argc < MAX_ARGS;
 }
 
 bool is_valid_port(const char *const port) {
@@ -72,7 +77,7 @@ bool is_valid_request(char **const reqline) {
 }
 
 void determine_root(char **reqline) {
-	if (strncmp(reqline[1], "/\0", 2) == 0) {
+	if (strncmp(reqline[1], "/\0", MDEFAULT_PAGE_LEN) == 0) {
 		printf("asked for /\n");
 		strncpy(reqline[1], "index.html", DEFAULT_PAGE_LEN);
 	} else {
@@ -127,7 +132,7 @@ void respond(char **const reqline, const int client_fd) {
 			printf("GET %s [200 OK]\n", reqline[1]);
 		send(client_fd, OK, CODE_200_LEN, 0);
 		extension = strrchr(reqline[1], '.'); // Change here
-		if (strncmp(extension, ".php", 4) == 0) {
+		if (strncmp(extension, ".php", PHP_EXT_LEN) == 0) {
 			process_php(reqline[1], client_fd);
 			close(client_fd);
 			return;
@@ -168,8 +173,8 @@ void determine_response(char *msg, const int client_fd, char *working_directory)
 		exit(EXIT_FAILURE);
 		// terminate("");
 
-	for (int i = 0; i < 3; i++) {
-		reqline[i] = calloc(128 + NT_LEN, sizeof(char));
+	for (int i = 0; i < REQLINE_AMT; i++) {
+		reqline[i] = calloc(REQLINE_LEN + NT_LEN, sizeof(char));
 		// check_malloc(reqline[i]);
 	}
 
@@ -211,7 +216,7 @@ void determine_response(char *msg, const int client_fd, char *working_directory)
 		respond(reqline, client_fd);
 	}
 
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < REQLINE_AMT; i++)
 		free(reqline[i]);
 	free(reqline);
 	printf("Reqline done free\n");
