@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -Wall -Wextra -Wpedantic -Werror -std=c99 -O0 -g
+CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter -Wno-unused-but-set-parameter -Werror -std=c99 -O0 -g
 
 LDLIBS = -D_POSIX_C_SOURCE=200112L
 
