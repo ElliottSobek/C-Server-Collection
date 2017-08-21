@@ -53,7 +53,7 @@ bool is_valid_address(const int status) {
 }
 
 bool is_valid_number_of_arguments(const int argc) {
-	return argc == 1;
+	return argc < 5;
 }
 
 bool is_valid_port(const char *const port) {
