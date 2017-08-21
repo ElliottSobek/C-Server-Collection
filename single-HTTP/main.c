@@ -291,9 +291,8 @@ void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 	}
 }
 
-void handle_sigint(int arg) {
-	arg = 0;
-	sigint_flag = arg;
+void handle_sigint(const int arg) {
+	sigint_flag = 0;
 }
 
 void init_signals(void) {
