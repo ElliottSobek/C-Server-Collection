@@ -1,4 +1,5 @@
 // Bug with random get???
+// Bug with file downloaded
 
 #include <stdio.h>
 #include <string.h>
@@ -7,8 +8,11 @@
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
+#include <errno.h>
 #include <linux/limits.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -37,9 +41,10 @@
 #define MDEFAULT_PAGE_LEN 2
 #define DEFAULT_PAGE_LEN 10
 #define CODE_200_LEN 17
-#define CODE_400_LEN 25
-#define CODE_404_LEN 23
-#define CODE_403_LEN 27
+#define CODE_400_LEN 26
+#define CODE_404_LEN 24
+#define CODE_403_LEN 24
+#define CODE_500_LEN 36
 #define REQLINE_LEN 128
 #define REQLINE_AMT 3
 #define PORT_MIN 0
@@ -125,43 +130,46 @@ void process_php(const char *const script_path, const int client_fd) {
 
 // Access bad?
 void respond(char **const reqline, const int client_fd) {
-	if (access(reqline[1], F_OK | R_OK) == 0) {
-		const char *extension = "";
+	const int fd = open(reqline[1], O_RDONLY);
+
+	if (fd > -1) {
 		if (verbose_flag)
 			printf("GET %s [200 OK]\n", reqline[1]);
 		send(client_fd, OK, CODE_200_LEN, 0);
-		extension = strrchr(reqline[1], '.'); // Change here
+		const char *extension = strrchr(reqline[1], '.');
+
 		if (strncmp(extension, ".php", PHP_EXT_LEN) == 0) {
 			process_php(reqline[1], client_fd);
+			close(fd);
 			close(client_fd);
 			return;
 		}
-		FILE *fp = fopen(reqline[1], "r");
-		char *f_contents = malloc(PACKET_MAX + NT_LEN);
+		char *const f_contents = malloc(PACKET_MAX + NT_LEN);
 
 		// check_malloc(f_contents);
 		size_t nbytes;
 
-		while ((nbytes = fread(f_contents, sizeof(char), PACKET_MAX, fp)) > 0)
+		while ((nbytes = read(fd, f_contents, sizeof(char))) > 0)
 			send(client_fd, f_contents, nbytes, 0);
 
 		free(f_contents);
-		fclose(fp);
-		close(client_fd);
-		return;
 	}
-
-	if (access(reqline[1], F_OK) == -1) {
+	else if (errno == ENOENT) {
 		if (verbose_flag)
 			printf("GET %s [404 Not Found]\n", reqline[1]);
 		send(client_fd, NOT_FOUND, CODE_404_LEN, 0);
-		close(client_fd);
-		return;
 	}
-
-	if (verbose_flag)
-		printf("GET %s [403 Access Denied]\n", reqline[1]);
-	send(client_fd, FORBIDDEN, CODE_403_LEN, 0);
+	else if (errno == EACCES) {
+		if (verbose_flag)
+			printf("GET %s [403 Access Denied]\n", reqline[1]);
+		send(client_fd, FORBIDDEN, CODE_403_LEN, 0);
+	}
+	else {
+		if (verbose_flag)
+			printf("GET %s [500 Internal Server Error]\n", reqline[1]);
+		send(client_fd, SERVER_ERROR, CODE_500_LEN, 0);
+	}
+	close(fd);
 	close(client_fd);
 }
 
