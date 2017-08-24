@@ -26,7 +26,7 @@
 #define CREATED "HTTP/1.1 201 CREATED\n\n"
 #define TIMEOUT "HTTP/1.1 408 REQUEST TIME-OUT\n\n"
 #define SERVER_ERROR "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n"
-#define LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/"
+#define LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
 
 #define BACKLOG 10
 #define MAX_ARGS 5
@@ -40,13 +40,15 @@
 #define PHP_EXT_LEN 4
 #define MDEFAULT_PAGE_LEN 2
 #define DEFAULT_PAGE_LEN 10
+#define LOG_FILE_LEN 7
+#define LOG_ROOT_LEN 58
 #define CODE_200_LEN 17
 #define CODE_400_LEN 26
 #define CODE_404_LEN 24
 #define CODE_403_LEN 24
 #define CODE_500_LEN 36
 #define REQLINE_LEN 128
-#define REQLINE_AMT 3
+#define REQLINE_TOKEN_AMT 3
 #define PORT_MIN 0
 #define PORT_MAX 65536
 
@@ -128,7 +130,6 @@ void process_php(const char *const script_path, const int client_fd) {
 	}
 }
 
-// Access bad?
 void respond(char **const reqline, const int client_fd) {
 	const int fd = open(reqline[1], O_RDONLY);
 
@@ -147,7 +148,7 @@ void respond(char **const reqline, const int client_fd) {
 		char *const f_contents = malloc(PACKET_MAX + NT_LEN);
 
 		// check_malloc(f_contents);
-		size_t nbytes;
+		size_t nbytes; // Do equal read?
 
 		while ((nbytes = read(fd, f_contents, sizeof(char))) > 0)
 			send(client_fd, f_contents, nbytes, 0);
@@ -174,13 +175,11 @@ void respond(char **const reqline, const int client_fd) {
 }
 
 void determine_response(char *msg, const int client_fd, char *working_directory) {
-	char **const reqline = malloc(3 * sizeof(char *));
+	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char *));
 
-	if (!reqline)
-		exit(EXIT_FAILURE);
-		// terminate("");
+	// check_malloc(reqline)
 
-	for (int i = 0; i < REQLINE_AMT; i++) {
+	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
 		reqline[i] = calloc(REQLINE_LEN + NT_LEN, sizeof(char));
 		// check_malloc(reqline[i]);
 	}
@@ -223,31 +222,32 @@ void determine_response(char *msg, const int client_fd, char *working_directory)
 		respond(reqline, client_fd);
 	}
 
-	for (int i = 0; i < REQLINE_AMT; i++)
+	for (int i = 0; i < REQLINE_TOKEN_AMT; i++)
 		free(reqline[i]);
 	free(reqline);
 	printf("Reqline done free\n");
 }
 
 // Feature need, rolling log files
+// log->YYYY->MMM->WEEK->DDD.log
+// Permissions on directories and files
+// Program owner and group owner
+// Parse and add time tokens for rolling log files
 void server_log(const char *const msg) {
-	time_t cur_time = time(NULL);
-	char *log_dir = calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		 *log_archive = calloc(ASC_TIME_MAX + strlen(msg) + 4 + NT_LEN, sizeof(char));
+	const time_t cur_time = time(NULL);
+	char *const log_dir = calloc(PATH_MAX + NT_LEN, sizeof(char)),
+				*const c_time = ctime(&cur_time);
+	FILE *fp;
 
-	strncpy(log_dir, LOG_ROOT, PATH_MAX);
+	strncpy(log_dir, LOG_ROOT, LOG_ROOT_LEN);
 	strncat(log_dir, "server.log", 10);
-	FILE *fp = fopen(log_dir, "a");
+	fp = fopen(log_dir, "a");
+	c_time[24] = '\0';
 
-	// use fprintf and reduce strncat calls?
-	strncpy(log_archive, asctime(localtime(&cur_time)), ASC_TIME_MAX);
-	strncat(log_archive, " ", 1);
-	strncat(log_archive, msg, strlen(msg));
-	strncat(log_archive, "\r\n", 2);
-	fputs(log_archive, fp); // Use fprintf?
+	fprintf(fp, "[%s]: %s\n", c_time, msg);
+
 	fclose(fp);
 	free(log_dir);
-	free(log_archive);
 }
 
 void *get_in_addr(const struct sockaddr *const sa) {
@@ -357,8 +357,10 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (verbose_flag)
+	if (verbose_flag) {
 		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, initwd);
+		server_log("Initialization: SUCCESS;");
+	}
 
 	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
