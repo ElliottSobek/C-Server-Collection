@@ -28,8 +28,11 @@
 *.x86_64
 *.hex
 single-HTTP/single-HTTP
-testing/
 
 # Debug files
 *.dSYM/
 *.su
+
+# Directories
+testing/
+logs/
