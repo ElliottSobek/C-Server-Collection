@@ -85,22 +85,16 @@ bool is_valid_request(char **const reqline) {
 }
 
 void determine_root(char **reqline) {
-	if (strncmp(reqline[1], "/\0", MDEFAULT_PAGE_LEN) == 0) {
-		printf("asked for /\n");
+	if (strncmp(reqline[1], "/\0", MDEFAULT_PAGE_LEN) == 0)
 		strncpy(reqline[1], "index.html", DEFAULT_PAGE_LEN);
-	} else {
+	else {
 		char *tok = strtok(reqline[1], "/");
 
-		printf("Get the last elem?\n");
-		if (!tok) {
-			printf("add index.html to end?\n");
+		if (!tok)
 			strncpy(reqline[1], "index.html", DEFAULT_PAGE_LEN);
-		} else {
-			printf("add someting to end?\n");
-			memmove(reqline[1], tok, strlen(reqline[1]));
-		}
+		else
+			strncpy(reqline[1], tok, strlen(reqline[1]));
 	}
-	printf("Done determining root\n");
 }
 
 void compute_flags(const int argc, char **const argv, const char **const port, bool *v_flag) {
@@ -120,15 +114,54 @@ void compute_flags(const int argc, char **const argv, const char **const port, b
 	}
 }
 
+// Program owner and group owner
+void server_log(const char *const msg) {
+	const mode_t mode_d = 0770, mode_f = 0660;
+	const time_t cur_time = time(NULL);
+	char *const log_dir = calloc(PATH_MAX + NT_LEN, sizeof(char)),
+		 *const f_time = malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
+		 ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
+	const struct tm *const t_data = localtime(&cur_time);
+
+	if (!log_dir || !f_time) {
+		fprintf(stderr, "Error: Memory allocation\n");
+		exit(EXIT_FAILURE);
+	}
+
+	strftime(f_time, FTIME_MLEN, "%a %b %d %T %Y", t_data);
+	strftime(ff_time_path, 10, "logs/%Y", t_data);
+	mkdir(ff_time_path, mode_d);
+
+	strftime(ff_time_path, 14, "logs/%Y/%b", t_data);
+	mkdir(ff_time_path, mode_d);
+
+	strftime(ff_time_path, 17, "logs/%Y/%b/%U", t_data);
+	mkdir(ff_time_path, mode_d);
+
+	strftime(ff_time_path, 20, "%Y/%b/%U/%a.log", t_data);
+	snprintf(log_dir, PATH_MAX, "%s%s", LOG_ROOT, ff_time_path);
+
+	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
+	if (fd == -1)
+		perror(strerror(errno));
+	else
+		dprintf(fd, "[%s]: %s\n", f_time, msg);
+
+	close(fd);
+	free(f_time);
+	free(log_dir);
+}
+
 void process_php(const char *const script_path, const int client_fd) {
-	pid_t c_pid = fork();
+	const pid_t c_pid = fork();
 
 	if (c_pid == -1)
-		// perror("fork");
+		server_log(strerror(errno));
 		exit(EXIT_FAILURE);
-	else if (c_pid == 0) {
+
+	if (c_pid == 0) {
 		dup2(client_fd, STDOUT_FILENO);
-		execl("/usr/bin/php", "php", script_path, (char *) NULL); // Make a pipe?
+		execl("/usr/bin/php", "php", script_path, (char *) NULL);
 	}
 }
 
@@ -149,7 +182,10 @@ void respond(char **const reqline, const int client_fd) {
 		}
 		char *const f_contents = malloc(PACKET_MAX + NT_LEN);
 
-		// check_malloc(f_contents);
+		if (!f_contents) {
+			fprintf(stderr, "Error: Memeory allocation\n");
+			exit(EXIT_FAILURE);
+		}
 		size_t nbytes; // Do equal read?
 
 		while ((nbytes = read(fd, f_contents, sizeof(char))) > 0)
@@ -176,17 +212,21 @@ void respond(char **const reqline, const int client_fd) {
 	close(client_fd);
 }
 
-void determine_response(char *msg, const int client_fd, char *working_directory) {
+void determine_response(char *msg, const int client_fd, char *working_directory, char *ipv4_address) {
 	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char *));
 
-	// check_malloc(reqline)
+	if (!reqline) {
+		fprintf(stderr, "Error: Memory allocation\n");
+		exit(EXIT_FAILURE);
+	}
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
 		reqline[i] = calloc(REQLINE_LEN + NT_LEN, sizeof(char));
-		// check_malloc(reqline[i]);
+		if (!reqline[i]) {
+			fprintf(stderr, "Error: Memory allocation\n");
+			exit(EXIT_FAILURE);
+		}
 	}
-
-	printf("This is message in determine response: [%s]\n", msg);
 
 	char *tok = strtok(msg, " \t\n");
 	if (!tok)
@@ -209,55 +249,25 @@ void determine_response(char *msg, const int client_fd, char *working_directory)
 
 	printf("Done copying\nThis is r[0]: %s\nThis is r[1]: %s\nThis is r[2]: %s\n", reqline[0], reqline[1], reqline[2]);
 
+	char bob[200];
+	snprintf(bob, 200, "Connection from %s for file %s", ipv4_address, reqline[1]);
+	server_log(bob);
+
 	if (!is_valid_request(reqline)) {
 		BAD: if (verbose_flag)
 			     printf("%s %s [400 Bad Request]\n", reqline[0], reqline[1]);
 		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
 		close(client_fd);
 	} else {
-		printf("Starting determine root\n");
 		determine_root(reqline);
-		printf("Concatenating determined root\n");
-		printf("This is wd: %s\n This is r[1]: %s\n", working_directory, reqline[1]);
+		printf("This is wd: %s\nThis is r[1]: %s\n", working_directory, reqline[1]);
 		strncat(working_directory, reqline[1], strlen(reqline[1]));
-		printf("successful determine response\n");
 		respond(reqline, client_fd);
 	}
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++)
 		free(reqline[i]);
 	free(reqline);
-	printf("Reqline done free\n");
-}
-
-// Program owner and group owner
-void server_log(const char *const msg) {
-	const mode_t mode_d = 0770, mode_f = 0660;
-	const time_t cur_time = time(NULL);
-	char *const log_dir = calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		 *const f_time = malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
-		 ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
-	const struct tm *const t_data = localtime(&cur_time);
-
-	strftime(f_time, FTIME_MLEN, "%a %b %d %T %Y", t_data);
-	strftime(ff_time_path, 10, "logs/%Y", t_data);
-	mkdir(ff_time_path, mode_d);
-
-	strftime(ff_time_path, 14, "logs/%Y/%b", t_data);
-	mkdir(ff_time_path, mode_d);
-
-	strftime(ff_time_path, 17, "logs/%Y/%b/%U", t_data);
-	mkdir(ff_time_path, mode_d);
-
-	strftime(ff_time_path, 20, "%Y/%b/%U/%a.log", t_data);
-	snprintf(log_dir, PATH_MAX, "%s%s", LOG_ROOT, ff_time_path);
-
-	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
-	dprintf(fd, "[%s]: %s\n", f_time, msg);
-
-	close(fd);
-	free(f_time);
-	free(log_dir);
 }
 
 void *get_in_addr(const struct sockaddr *const sa) {
@@ -282,18 +292,18 @@ void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 		*socketfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
 
 		if (*socketfd == -1) {
-			perror("server: socket"); // Log it/Ignore it?
+			perror(strerror(errno));
 			continue;
 		}
 
 		if (setsockopt(*socketfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-			perror("setsockopt"); // Log it/Ignore it?
-//			terminate("");
+			perror(strerror(errno));
+			exit(EXIT_FAILURE);
 		}
 
 		if (bind(*socketfd, p->ai_addr, p->ai_addrlen) == -1) {
 			close(*socketfd);
-			perror("server: bind"); // Log it/Ignore it?
+			perror(strerror(errno));
 			continue;
 		}
 
@@ -303,8 +313,8 @@ void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 	freeaddrinfo(serviceinfo);
 
 	if (!p)  {
-		fprintf(stderr, "server: failed to bind"); // Log it/Ignore it?
-//		terminate("");
+		perror(strerror(errno));
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -320,20 +330,26 @@ void init_signals(void) {
 	sigemptyset(&new_action_int.sa_mask);
 	new_action_int.sa_flags = 0;
 
-	if (sigaction(SIGINT, &new_action_int, NULL) == -1)
-		// terminate(strerror(errno));
+	if (sigaction(SIGINT, &new_action_int, NULL) == -1) {
+		perror(strerror(errno));
 		exit(EXIT_FAILURE);
+	}
 }
 
 int main(const int argc, char **const argv) {
 	const char *port = DEFAULT_PORT;
-	char *initwd,
-		 *const ipv4_address = "",
-		 *const doc_root = calloc(PATH_MAX + NT_LEN, sizeof(char));
-	int status, socketfd, new_fd; // File descriptor proper names? Masterfd, newfd?
-	struct sockaddr_storage recv_addr;
+	char ipv4_address[INET_ADDRSTRLEN],
+		*initwd,
+		*const doc_root = calloc(PATH_MAX + NT_LEN, sizeof(char));
+	int status, masterfd, newfd;
+	struct sockaddr_storage client_addr;
 	struct addrinfo addressinfo, *serviceinfo;
-	socklen_t sin_size = sizeof(recv_addr);
+	socklen_t sin_size = sizeof(client_addr);
+
+	if (!doc_root) {
+		fprintf(stderr, "Error: Memory allocation\n");
+		exit(EXIT_FAILURE);
+	}
 
 	init_signals();
 	if (!is_valid_number_of_arguments(argc)) {
@@ -346,60 +362,59 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	server_log("Program Start");
-
 	init_addrinfo(&addressinfo);
 	status = getaddrinfo(NULL, port, &addressinfo, &serviceinfo);
 
 	if (!is_valid_address(status)) {
-		fprintf(stderr, "Error: Invalid address\n");
+		perror(gai_strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
-	get_socket(&socketfd, serviceinfo);
+	get_socket(&masterfd, serviceinfo);
 
-	if (!is_valid_listen(socketfd)) {
-		fprintf(stderr, "Error: Invalid listen\n");
+	if (!is_valid_listen(masterfd)) {
+		perror(strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
 	initwd = getcwd(NULL, PATH_MAX);
 	if (!initwd) {
-		fprintf(stderr, "Error: Invalid working directory\n");
+		perror(strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+
+	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
+
+	if (!msg) {
+		fprintf(stderr, "Error: Memory allocation\n");
+		exit(EXIT_FAILURE);
+	}
+	strncpy(doc_root, ROOT_DIR, ROOT_DIR_LEN);
 
 	if (verbose_flag)
 		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, initwd);
 
-	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
-
-	strncpy(doc_root, ROOT_DIR, ROOT_DIR_LEN);
-
 	while (sigint_flag) {
 		doc_root[ROOT_DIR_LEN] = '\0';
 
-		new_fd = accept(socketfd, (struct sockaddr *)&recv_addr, &sin_size);
+		newfd = accept(masterfd, (struct sockaddr *)&client_addr, &sin_size);
 
-		if (new_fd == -1) {
-			perror("accept"); // Log it/ignore?
+		if (newfd == -1) {
+			server_log(strerror(errno));
 			continue;
 		}
 
-		inet_ntop(recv_addr.ss_family, get_in_addr((struct sockaddr*)&recv_addr), ipv4_address, sizeof(*ipv4_address));
+		inet_ntop(AF_INET, get_in_addr((struct sockaddr*)&client_addr), ipv4_address, INET_ADDRSTRLEN);
 
-		if (recv(new_fd, msg, MSG_LEN, 0) < 0) { // Look into man page
-			perror("recv"); // Log it/ignore?
+		if (recv(newfd, msg, MSG_LEN, 0) < 0) { // Look into man page
+			server_log(strerror(errno));
 			continue;
 		}
-		printf("RECIEVE PACKET: SUCCESS\n");
-		determine_response(msg, new_fd, doc_root);
+		determine_response(msg, newfd, doc_root, ipv4_address);
 	}
 	free(initwd);
 	free(msg);
 	free(doc_root);
-	printf("Closed\n");
-
 	return 0;
 }
 
