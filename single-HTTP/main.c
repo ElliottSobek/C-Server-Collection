@@ -269,9 +269,9 @@ void *get_in_addr(const struct sockaddr *const sa) {
 
 void init_addrinfo(struct addrinfo *const addressinfo) {
 	memset(addressinfo, 0, sizeof(*addressinfo));
-	(*addressinfo).ai_family = AF_INET;
+	(*addressinfo).ai_family = AF_INET; // IPV4
 	(*addressinfo).ai_socktype = SOCK_STREAM; // TCP
-	(*addressinfo).ai_flags = AI_PASSIVE | AI_V4MAPPED; // Correct flags?
+	(*addressinfo).ai_flags = AI_PASSIVE | AI_V4MAPPED; // Gen socket, IPV4
 }
 
 void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
@@ -315,7 +315,7 @@ void handle_sigint(const int arg) {
 void init_signals(void) {
 	struct sigaction new_action_int;
 
-	new_action_int.sa_handler = handle_sigint; // Look in man page
+	new_action_int.sa_handler = handle_sigint;
 
 	sigemptyset(&new_action_int.sa_mask);
 	new_action_int.sa_flags = 0;
