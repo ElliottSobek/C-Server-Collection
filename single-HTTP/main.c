@@ -42,6 +42,8 @@
 #define DEFAULT_PAGE_LEN 10
 #define LOG_FILE_LEN 7
 #define LOG_ROOT_LEN 58
+#define FTIME_MLEN 25
+#define FF_TIME_PATH_MLEN 19
 #define CODE_200_LEN 17
 #define CODE_400_LEN 26
 #define CODE_404_LEN 24
@@ -228,25 +230,33 @@ void determine_response(char *msg, const int client_fd, char *working_directory)
 	printf("Reqline done free\n");
 }
 
-// Feature need, rolling log files
-// log->YYYY->MMM->WEEK->DDD.log
-// Permissions on directories and files
 // Program owner and group owner
-// Parse and add time tokens for rolling log files
 void server_log(const char *const msg) {
+	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
 	char *const log_dir = calloc(PATH_MAX + NT_LEN, sizeof(char)),
-				*const c_time = ctime(&cur_time);
-	FILE *fp;
+		 *const f_time = malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
+		 ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
+	const struct tm *const t_data = localtime(&cur_time);
 
-	strncpy(log_dir, LOG_ROOT, LOG_ROOT_LEN);
-	strncat(log_dir, "server.log", 10);
-	fp = fopen(log_dir, "a");
-	c_time[24] = '\0';
+	strftime(f_time, FTIME_MLEN, "%a %b %d %T %Y", t_data);
+	strftime(ff_time_path, 10, "logs/%Y", t_data);
+	mkdir(ff_time_path, mode_d);
 
-	fprintf(fp, "[%s]: %s\n", c_time, msg);
+	strftime(ff_time_path, 14, "logs/%Y/%b", t_data);
+	mkdir(ff_time_path, mode_d);
 
-	fclose(fp);
+	strftime(ff_time_path, 17, "logs/%Y/%b/%U", t_data);
+	mkdir(ff_time_path, mode_d);
+
+	strftime(ff_time_path, 20, "%Y/%b/%U/%a.log", t_data);
+	snprintf(log_dir, PATH_MAX, "%s%s", LOG_ROOT, ff_time_path);
+
+	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
+	dprintf(fd, "[%s]: %s\n", f_time, msg);
+
+	close(fd);
+	free(f_time);
 	free(log_dir);
 }
 
@@ -336,6 +346,8 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
+	server_log("Program Start");
+
 	init_addrinfo(&addressinfo);
 	status = getaddrinfo(NULL, port, &addressinfo, &serviceinfo);
 
@@ -357,10 +369,8 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (verbose_flag) {
+	if (verbose_flag)
 		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, initwd);
-		server_log("Initialization: SUCCESS;");
-	}
 
 	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
