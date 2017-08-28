@@ -91,7 +91,7 @@ void compute_flags(const int argc, char **const argv, const char **const port, b
 	while ((c = getopt(argc, argv, "hvp:")) != -1) {
 		switch (c) {
 		case 'h':
-			printf("Usage: ./single-HTTP [-hv] [-p <unsigned int>]\n"
+			printf("Usage: ./single-HTTP [-h] [-v] [-p <unsigned int>]\n"
 				"-h\tHelp menu\n"
 				"-v\tVerbose\n"
 				"-p\t<Unsigned Int>\tPort number. 1-65535; 1-1024 require root privileges.\n");
@@ -347,7 +347,7 @@ int main(const int argc, char **const argv) {
 
 	init_signals();
 	if (argc > MAX_ARGS) {
-		fprintf(stderr, "Usage: ./single-HTTP [-hv] [-p <unsigned int>]\n");
+		fprintf(stderr, "Usage: ./single-HTTP [-h] [-v] [-p <unsigned int>]\n");
 		exit(EXIT_FAILURE);
 	}
 	compute_flags(argc, argv, &port, &verbose_flag);
