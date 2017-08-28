@@ -54,8 +54,7 @@
 #define PORT_MIN 0
 #define PORT_MAX 65536
 
-int sigint_flag = 1;
-bool verbose_flag = false;
+bool verbose_flag = false, sigint_flag = true;
 
 bool is_valid_port(const char *const port) {
 	const int port_num = atoi(port);
@@ -313,7 +312,7 @@ void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 }
 
 void handle_sigint(const int arg) {
-	sigint_flag = 0;
+	sigint_flag = false;
 }
 
 void init_signals(void) {
