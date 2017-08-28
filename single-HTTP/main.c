@@ -175,7 +175,7 @@ void respond(char **const reqline, const int client_fd) {
 			close(client_fd);
 			return;
 		}
-		char *const f_contents = malloc(PACKET_MAX + NT_LEN);
+		char *const f_contents = malloc((PACKET_MAX + NT_LEN) * sizeof(char));
 
 		if (!f_contents) {
 			fprintf(stderr, "Error: Memeory allocation\n");
