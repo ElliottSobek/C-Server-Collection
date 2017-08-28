@@ -1,6 +1,7 @@
 // Bug with random get???
-// Bug with file downloaded
 // Php memory leak?
+// HTTP/1.0 vs HTTP/1.1
+// Separate ip address from determine_response
 
 #include <stdio.h>
 #include <string.h>
@@ -154,17 +155,17 @@ void process_php(const char *const script_path, const int client_fd) {
 	}
 }
 
-void respond(char **const reqline, const int client_fd) {
-	const int fd = open(reqline[1], O_RDONLY);
+void respond(char *const path, const int client_fd) {
+	const int fd = open(path, O_RDONLY);
 
 	if (fd > -1) {
 		if (verbose_flag)
-			printf("GET %s [200 OK]\n", reqline[1]);
+			printf("GET %s [200 OK]\n", path);
 		send(client_fd, OK, CODE_200_LEN, 0);
-		const char *extension = strrchr(reqline[1], '.');
+		const char *extension = strrchr(path, '.');
 
 		if (strncmp(extension, ".php", PHP_EXT_LEN) == 0) {
-			process_php(reqline[1], client_fd);
+			process_php(path, client_fd);
 			close(fd);
 			close(client_fd);
 			return;
@@ -184,24 +185,24 @@ void respond(char **const reqline, const int client_fd) {
 	}
 	else if (errno == ENOENT) {
 		if (verbose_flag)
-			printf("GET %s [404 Not Found]\n", reqline[1]);
+			printf("GET %s [404 Not Found]\n", path);
 		send(client_fd, NOT_FOUND, CODE_404_LEN, 0);
 	}
 	else if (errno == EACCES) {
 		if (verbose_flag)
-			printf("GET %s [403 Access Denied]\n", reqline[1]);
+			printf("GET %s [403 Access Denied]\n", path);
 		send(client_fd, FORBIDDEN, CODE_403_LEN, 0);
 	}
 	else {
 		if (verbose_flag)
-			printf("GET %s [500 Internal Server Error]\n", reqline[1]);
+			printf("GET %s [500 Internal Server Error]\n", path);
 		send(client_fd, SERVER_ERROR, CODE_500_LEN, 0);
 	}
 	close(fd);
 	close(client_fd);
 }
 
-void determine_response(char *msg, const int client_fd, char *working_directory, char *ipv4_address) {
+void determine_response(char *msg, const int client_fd, char *working_directory, const char *const ipv4_address) {
 	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char*));
 
 	if (!reqline) {
@@ -249,9 +250,8 @@ void determine_response(char *msg, const int client_fd, char *working_directory,
 		close(client_fd);
 	} else {
 		determine_root(reqline[1]);
-		printf("This is wd: %s\nThis is r[1]: %s\n", working_directory, reqline[1]);
 		strncat(working_directory, reqline[1], strlen(reqline[1]));
-		respond(reqline, client_fd);
+		respond(reqline[1], client_fd);
 	}
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++)
@@ -327,8 +327,7 @@ void init_signals(void) {
 
 int main(const int argc, char **const argv) {
 	const char *port = DEFAULT_PORT;
-	char ipv4_address[INET_ADDRSTRLEN],
-		*initwd,
+	char ipv4_address[INET_ADDRSTRLEN], *initwd,
 		*const doc_root = calloc(PATH_MAX + NT_LEN, sizeof(char));
 	int masterfd, newfd;
 	struct sockaddr_storage client_addr;
