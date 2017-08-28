@@ -72,18 +72,11 @@ bool is_valid_request(char **const reqline) {
 	return true;
 }
 
-// Doesnt travel down directories
-void determine_root(char **reqline) {
-	if (strncmp(reqline[1], "/\0", MDEFAULT_PAGE_LEN) == 0)
-		strncpy(reqline[1], "index.html", DEFAULT_PAGE_LEN);
-	else {
-		char *tok = strtok(reqline[1], "/");
-
-		if (!tok)
-			strncpy(reqline[1], "index.html", DEFAULT_PAGE_LEN);
-		else
-			memmove(reqline[1], tok, strlen(reqline[1]));
-	}
+void determine_root(char *path) {
+	if (strncmp(path, "/\0", MDEFAULT_PAGE_LEN) == 0)
+		strncpy(path, "index.html", DEFAULT_PAGE_LEN);
+	else
+		memmove(path, path + 1, strlen(path));
 }
 
 void compute_flags(const int argc, char **const argv, const char **const port, bool *v_flag) {
@@ -255,7 +248,7 @@ void determine_response(char *msg, const int client_fd, char *working_directory,
 		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
 		close(client_fd);
 	} else {
-		determine_root(reqline);
+		determine_root(reqline[1]);
 		printf("This is wd: %s\nThis is r[1]: %s\n", working_directory, reqline[1]);
 		strncat(working_directory, reqline[1], strlen(reqline[1]));
 		respond(reqline, client_fd);
