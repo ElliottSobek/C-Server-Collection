@@ -57,18 +57,6 @@
 int sigint_flag = 1;
 bool verbose_flag = false;
 
-bool is_valid_listen(const int socketfd) {
-	return listen(socketfd, BACKLOG) == 0;
-}
-
-bool is_valid_address(const int status) {
-	return status == 0;
-}
-
-bool is_valid_number_of_arguments(const int argc) {
-	return argc < MAX_ARGS;
-}
-
 bool is_valid_port(const char *const port) {
 	const int port_num = atoi(port);
 
@@ -341,7 +329,7 @@ int main(const int argc, char **const argv) {
 	char ipv4_address[INET_ADDRSTRLEN],
 		*initwd,
 		*const doc_root = calloc(PATH_MAX + NT_LEN, sizeof(char));
-	int status, masterfd, newfd;
+	int masterfd, newfd;
 	struct sockaddr_storage client_addr;
 	struct addrinfo addressinfo, *serviceinfo;
 	socklen_t sin_size = sizeof(client_addr);
@@ -352,7 +340,7 @@ int main(const int argc, char **const argv) {
 	}
 
 	init_signals();
-	if (!is_valid_number_of_arguments(argc)) {
+	if (argc > MAX_ARGS) {
 		fprintf(stderr, "Usage: ./single-HTTP [-v] [-p <unsigned int>]\n");
 		exit(EXIT_FAILURE);
 	}
@@ -363,16 +351,15 @@ int main(const int argc, char **const argv) {
 	}
 
 	init_addrinfo(&addressinfo);
-	status = getaddrinfo(NULL, port, &addressinfo, &serviceinfo);
 
-	if (!is_valid_address(status)) {
+	if (getaddrinfo(NULL, port, &addressinfo, &serviceinfo) != 0) {
 		perror(gai_strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
 	get_socket(&masterfd, serviceinfo);
 
-	if (!is_valid_listen(masterfd)) {
+	if (listen(masterfd, BACKLOG) == -1) {
 		perror(strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -406,7 +393,7 @@ int main(const int argc, char **const argv) {
 
 		inet_ntop(AF_INET, get_in_addr((struct sockaddr*)&client_addr), ipv4_address, INET_ADDRSTRLEN);
 
-		if (recv(newfd, msg, MSG_LEN, 0) < 0) { // Look into man page
+		if (recv(newfd, msg, MSG_LEN, 0) < 0) {
 			server_log(strerror(errno));
 			continue;
 		}
