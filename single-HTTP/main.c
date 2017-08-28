@@ -29,7 +29,7 @@
 #define LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
 
 #define BACKLOG 10
-#define MAX_ARGS 5
+#define MAX_ARGS 4
 #define PACKET_MAX 1024
 #define ASC_TIME_MAX 24
 #define MSG_LEN 4096
