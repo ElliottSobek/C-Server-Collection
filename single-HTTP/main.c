@@ -1,5 +1,6 @@
 // Bug with random get???
 // Bug with file downloaded
+// Php memory leak?
 
 #include <stdio.h>
 #include <string.h>
@@ -148,9 +149,10 @@ void server_log(const char *const msg) {
 void process_php(const char *const script_path, const int client_fd) {
 	const pid_t c_pid = fork();
 
-	if (c_pid == -1)
+	if (c_pid == -1) {
 		server_log(strerror(errno));
 		exit(EXIT_FAILURE);
+	}
 
 	if (c_pid == 0) {
 		dup2(client_fd, STDOUT_FILENO);
