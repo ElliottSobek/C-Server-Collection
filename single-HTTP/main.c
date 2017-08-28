@@ -72,6 +72,7 @@ bool is_valid_request(char **const reqline) {
 	return true;
 }
 
+// Doesnt travel down directories
 void determine_root(char **reqline) {
 	if (strncmp(reqline[1], "/\0", MDEFAULT_PAGE_LEN) == 0)
 		strncpy(reqline[1], "index.html", DEFAULT_PAGE_LEN);
@@ -208,7 +209,7 @@ void respond(char **const reqline, const int client_fd) {
 }
 
 void determine_response(char *msg, const int client_fd, char *working_directory, char *ipv4_address) {
-	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char *));
+	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char*));
 
 	if (!reqline) {
 		fprintf(stderr, "Error: Memory allocation\n");
@@ -245,7 +246,7 @@ void determine_response(char *msg, const int client_fd, char *working_directory,
 	printf("Done copying\nThis is r[0]: %s\nThis is r[1]: %s\nThis is r[2]: %s\n", reqline[0], reqline[1], reqline[2]);
 
 	char bob[200];
-	snprintf(bob, 200, "Connection from %s for file %s", ipv4_address, reqline[1]);
+	snprintf(bob, 200, "Connection from %s for file %s", ipv4_address, reqline[1]); // TMP
 	server_log(bob);
 
 	if (!is_valid_request(reqline)) {
