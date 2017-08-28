@@ -28,7 +28,7 @@
 #define SERVER_ERROR "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n"
 #define LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
 
-#define BACKLOG 10
+#define BACKLOG 1
 #define MAX_ARGS 4
 #define PACKET_MAX 1024
 #define ASC_TIME_MAX 24
