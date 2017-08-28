@@ -80,7 +80,7 @@ void determine_root(char **reqline) {
 		if (!tok)
 			strncpy(reqline[1], "index.html", DEFAULT_PAGE_LEN);
 		else
-			strncpy(reqline[1], tok, strlen(reqline[1]));
+			memmove(reqline[1], tok, strlen(reqline[1]));
 	}
 }
 
