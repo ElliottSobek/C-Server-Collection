@@ -141,7 +141,7 @@ void server_log(const char *const msg) {
 	free(log_dir);
 }
 
-void process_php(const char *const script_path, const int client_fd) {
+void process_php(const int client_fd, const char *const script_path) {
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1) {
@@ -155,54 +155,69 @@ void process_php(const char *const script_path, const int client_fd) {
 	}
 }
 
-void respond(char *const path, const int client_fd) {
+void send_file(const int client_fd, const char *const path) {
 	const int fd = open(path, O_RDONLY);
 
 	if (fd > -1) {
-		if (verbose_flag)
-			printf("GET %s [200 OK]\n", path);
-		send(client_fd, OK, CODE_200_LEN, 0);
-		const char *extension = strrchr(path, '.');
-
-		if (strncmp(extension, ".php", PHP_EXT_LEN) == 0) {
-			process_php(path, client_fd);
-			close(fd);
-			close(client_fd);
-			return;
-		}
 		char *const f_contents = malloc((PACKET_MAX + NT_LEN) * sizeof(char));
 
 		if (!f_contents) {
 			fprintf(stderr, "Error: Memeory allocation\n");
 			exit(EXIT_FAILURE);
 		}
-		size_t nbytes; // Do equal read?
 
-		while ((nbytes = read(fd, f_contents, sizeof(char))) > 0)
+		size_t nbytes = read(fd, f_contents, sizeof(char));
+
+		while (nbytes > 0) {
 			send(client_fd, f_contents, nbytes, 0);
+			nbytes = read(fd, f_contents, sizeof(char));
+		}
 
 		free(f_contents);
+	}
+
+	close(fd);
+}
+
+void respond(const int client_fd, char *const path) {
+	const int fd = open(path, O_RDONLY);
+
+	if (fd > -1) {
+		close(fd);
+
+		if (verbose_flag)
+			printf("GET %s [200 OK]\n", path);
+		send(client_fd, OK, CODE_200_LEN, 0);
+		const char *extension = strrchr(path, '.');
+
+		if (strncmp(extension, ".php", PHP_EXT_LEN) == 0)
+			process_php(client_fd, path);
+		else
+			send_file(client_fd, path);
 	}
 	else if (errno == ENOENT) {
 		if (verbose_flag)
 			printf("GET %s [404 Not Found]\n", path);
 		send(client_fd, NOT_FOUND, CODE_404_LEN, 0);
+		send_file(client_fd, "http-code-responses/404.html");
 	}
 	else if (errno == EACCES) {
 		if (verbose_flag)
 			printf("GET %s [403 Access Denied]\n", path);
 		send(client_fd, FORBIDDEN, CODE_403_LEN, 0);
+		send_file(client_fd, "http-code-responses/403.html");
 	}
 	else {
 		if (verbose_flag)
 			printf("GET %s [500 Internal Server Error]\n", path);
 		send(client_fd, SERVER_ERROR, CODE_500_LEN, 0);
+		send_file(client_fd, "http-code-responses/500.html");
 	}
 	close(fd);
 	close(client_fd);
 }
 
-void determine_response(char *msg, const int client_fd, char *working_directory, const char *const ipv4_address) {
+void determine_response(const int client_fd, char *msg, char *working_directory, const char *const ipv4_address) {
 	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char*));
 
 	if (!reqline) {
@@ -247,11 +262,12 @@ void determine_response(char *msg, const int client_fd, char *working_directory,
 		BAD: if (verbose_flag)
 			     printf("%s %s [400 Bad Request]\n", reqline[0], reqline[1]);
 		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
+		send_file(client_fd, "http-code-responses/400.html");
 		close(client_fd);
 	} else {
 		determine_root(reqline[1]);
 		strncat(working_directory, reqline[1], strlen(reqline[1]));
-		respond(reqline[1], client_fd);
+		respond(client_fd, reqline[1]);
 	}
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++)
@@ -273,7 +289,7 @@ void init_addrinfo(struct addrinfo *const addressinfo) {
 	(*addressinfo).ai_flags = AI_PASSIVE | AI_V4MAPPED; // Gen socket, IPV4
 }
 
-void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
+int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 	const short yes = 1;
 	const struct addrinfo *p;
 
@@ -291,8 +307,8 @@ void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 		}
 
 		if (bind(*socketfd, p->ai_addr, p->ai_addrlen) == -1) {
-			close(*socketfd);
 			perror(strerror(errno));
+			close(*socketfd);
 			continue;
 		}
 
@@ -301,10 +317,11 @@ void get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 
 	freeaddrinfo(serviceinfo);
 
-	if (!p)  {
-		perror(strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+	if (p)
+		return 0;
+	else
+		return -1;
+
 }
 
 void handle_sigint(const int arg) {
@@ -357,7 +374,10 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	get_socket(&masterfd, serviceinfo);
+	if (get_socket(&masterfd, serviceinfo) == -1) {
+		free(doc_root);
+		exit(EXIT_FAILURE);
+	}
 
 	if (listen(masterfd, BACKLOG) == -1) {
 		perror(strerror(errno));
@@ -397,7 +417,7 @@ int main(const int argc, char **const argv) {
 			server_log(strerror(errno));
 			continue;
 		}
-		determine_response(msg, newfd, doc_root, ipv4_address);
+		determine_response(newfd, msg, doc_root, ipv4_address);
 	}
 	free(initwd);
 	free(msg);
