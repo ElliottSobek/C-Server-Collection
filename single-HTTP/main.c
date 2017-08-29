@@ -194,6 +194,8 @@ void respond(const int client_fd, char *const path) {
 			process_php(client_fd, path);
 		else
 			send_file(client_fd, path);
+		close(client_fd);
+		return;
 	}
 	else if (errno == ENOENT) {
 		if (verbose_flag)
