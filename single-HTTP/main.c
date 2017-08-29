@@ -166,11 +166,11 @@ void send_file(const int client_fd, const char *const path) {
 			exit(EXIT_FAILURE);
 		}
 
-		size_t nbytes = read(fd, f_contents, sizeof(char));
+		size_t nbytes = read(fd, f_contents, PACKET_MAX);
 
 		while (nbytes > 0) {
 			send(client_fd, f_contents, nbytes, 0);
-			nbytes = read(fd, f_contents, sizeof(char));
+			nbytes = read(fd, f_contents, PACKET_MAX);
 		}
 
 		free(f_contents);
