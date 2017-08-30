@@ -118,7 +118,7 @@ void server_log(const char *const msg) {
 	const struct tm *const t_data = localtime(&cur_time);
 
 	if (!log_dir || !f_time) {
-		fprintf(stderr, "Error: Memory allocation\n");
+		server_log(strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -167,7 +167,7 @@ void send_file(const int client_fd, const char *const path) {
 		char *const f_contents = malloc((PACKET_MAX + NT_LEN) * sizeof(char));
 
 		if (!f_contents) {
-			fprintf(stderr, "Error: Memeory allocation\n");
+			server_log(strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -226,14 +226,14 @@ char **get_req_lines(char *msg) {
 	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char*));
 
 	if (!reqline) {
-		fprintf(stderr, "Error: Memory allocation\n");
+		server_log(strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
 		reqline[i] = calloc(REQLINE_LEN + NT_LEN, sizeof(char));
 		if (!reqline[i]) {
-			fprintf(stderr, "Error: Memory allocation\n");
+			server_log(strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -371,7 +371,7 @@ int main(const int argc, char **const argv) {
 		 *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 	if (!doc_root || !msg) {
-		fprintf(stderr, "Error: Memory allocation\n");
+		server_log(strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	strncpy(doc_root, ROOT_DIR, ROOT_DIR_LEN);
