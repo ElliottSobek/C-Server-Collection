@@ -1,7 +1,6 @@
 // Bug with random get???
-// Php memory leak?
 // HTTP/1.0 vs HTTP/1.1
-// Separate ip address from determine_response
+// errno for mallocs
 
 #include <stdio.h>
 #include <string.h>
@@ -29,11 +28,13 @@
 #define TIMEOUT "HTTP/1.1 408 REQUEST TIME-OUT\n\n"
 #define SERVER_ERROR "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n"
 #define LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
+#define MSG_TEMPLATE "Connection from %s for file %s"
 
 #define BACKLOG 1
 #define MAX_ARGS 4
 #define PACKET_MAX 1024
 #define ASC_TIME_MAX 24
+
 #define MSG_LEN 4096
 #define NT_LEN 1
 #define ROOT_DIR_LEN 53
@@ -52,6 +53,8 @@
 #define CODE_403_LEN 24
 #define CODE_500_LEN 36
 #define REQLINE_LEN 128
+#define MSG_TEMP_LEN 41
+
 #define REQLINE_TOKEN_AMT 3
 #define PORT_MIN 0
 #define PORT_MAX 65536
@@ -64,7 +67,7 @@ bool is_valid_port(const char *const port) {
 	return ((port_num > PORT_MIN) && (port_num < PORT_MAX));
 }
 
-bool is_valid_request(char **const reqline) {
+bool is_valid_request(char **const reqline) { // Good for now
 	if (strncmp(reqline[0], "GET", GET_REQ_LEN) != 0)
 		return false;
 	if ((strncmp(reqline[2], "HTTP/1.0", HTTP_VER_LEN) != 0) && (
@@ -73,7 +76,9 @@ bool is_valid_request(char **const reqline) {
 	return true;
 }
 
-void determine_root(char *path) {
+void determine_root(char **const reqlines) {
+	char *const path = reqlines[1];
+
 	if (strncmp(path, "/\0", MDEFAULT_PAGE_LEN) == 0)
 		strncpy(path, "index.html", DEFAULT_PAGE_LEN);
 	else
@@ -83,18 +88,18 @@ void determine_root(char *path) {
 void compute_flags(const int argc, char **const argv, const char **const port, bool *v_flag) {
 	int c;
 
-	while ((c = getopt(argc, argv, "hvp:")) != -1) {
+	while ((c = getopt(argc, argv, "hVp:")) != -1) {
 		switch (c) {
 		case 'h':
-			printf("Usage: ./single-HTTP [-h] [-v] [-p <unsigned int>]\n"
+			printf("Usage: ./single-HTTP [-h] [-V] [-p <unsigned int>]\n"
 				"-h\tHelp menu\n"
-				"-v\tVerbose\n"
+				"-V\tVerbose\n"
 				"-p\t<Unsigned Int>\tPort number. 1-65535; 1-1024 require root privileges.\n");
 			exit(EXIT_SUCCESS);
 		case 'p':
 			*port = optarg;
 			break;
-		case 'v':
+		case 'V':
 			*v_flag = true;
 			break;
 		case '?':
@@ -141,7 +146,7 @@ void server_log(const char *const msg) {
 	free(log_dir);
 }
 
-void process_php(const int client_fd, const char *const script_path) {
+void process_php(const int client_fd, const char *const file_path) {
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1) {
@@ -151,7 +156,7 @@ void process_php(const int client_fd, const char *const script_path) {
 
 	if (c_pid == 0) {
 		dup2(client_fd, STDOUT_FILENO);
-		execl("/usr/bin/php", "php", script_path, (char *) NULL);
+		execl("/usr/bin/php", "php", file_path, (char *) NULL);
 	}
 }
 
@@ -177,6 +182,7 @@ void send_file(const int client_fd, const char *const path) {
 	}
 
 	close(fd);
+	close(client_fd);
 }
 
 void respond(const int client_fd, char *const path) {
@@ -185,7 +191,7 @@ void respond(const int client_fd, char *const path) {
 	if (fd > -1) {
 		close(fd);
 
-		if (verbose_flag)
+		if (verbose_flag) // Minify path output
 			printf("GET %s [200 OK]\n", path);
 		send(client_fd, OK, CODE_200_LEN, 0);
 		const char *extension = strrchr(path, '.');
@@ -194,8 +200,6 @@ void respond(const int client_fd, char *const path) {
 			process_php(client_fd, path);
 		else
 			send_file(client_fd, path);
-		close(client_fd);
-		return;
 	}
 	else if (errno == ENOENT) {
 		if (verbose_flag)
@@ -216,10 +220,9 @@ void respond(const int client_fd, char *const path) {
 		send_file(client_fd, "http-code-responses/500.html");
 	}
 	close(fd);
-	close(client_fd);
 }
 
-void determine_response(const int client_fd, char *msg, char *working_directory, const char *const ipv4_address) {
+char **get_req_lines(char *msg) {
 	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char*));
 
 	if (!reqline) {
@@ -236,45 +239,31 @@ void determine_response(const int client_fd, char *msg, char *working_directory,
 	}
 
 	char *tok = strtok(msg, " \t\n");
-	if (!tok)
-		goto BAD;
-	printf("This is tok 1 in determine response: %s\n", tok);
 
 	strncpy(reqline[0], tok, (strlen(tok) + NT_LEN));
 	tok = strtok(NULL, " \t");
-	if (!tok)
-		goto BAD;
-	printf("This is tok 2 in determine response: %s\n", tok);
 
 	strncpy(reqline[1], tok, (strlen(tok) + NT_LEN));
 	tok = strtok(NULL, " \t\n");
-	if (!tok)
-		goto BAD;
-	printf("This is tok 3 in determine response: %s\n", tok);
 
 	strncpy(reqline[2], tok, (strlen(tok) + NT_LEN));
+	return reqline;
+}
 
-	printf("Done copying\nThis is r[0]: %s\nThis is r[1]: %s\nThis is r[2]: %s\n", reqline[0], reqline[1], reqline[2]);
-
-	char bob[200];
-	snprintf(bob, 200, "Connection from %s for file %s", ipv4_address, reqline[1]); // TMP
-	server_log(bob);
-
-	if (!is_valid_request(reqline)) {
-		BAD: if (verbose_flag)
-			     printf("%s %s [400 Bad Request]\n", reqline[0], reqline[1]);
-		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
-		send_file(client_fd, "http-code-responses/400.html");
-		close(client_fd);
-	} else {
-		determine_root(reqline[1]);
-		strncat(working_directory, reqline[1], strlen(reqline[1]));
-		respond(client_fd, reqline[1]);
-	}
-
+void free_req_lines(char **const reqline) {
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++)
 		free(reqline[i]);
 	free(reqline);
+}
+
+void determine_resp(const int client_fd, char **const reqline, char *const doc_root) {
+	if (!is_valid_request(reqline)) {
+		if (verbose_flag)
+			printf("%s %s [400 Bad Request]\n", reqline[0], reqline[1]);
+		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
+		send_file(client_fd, doc_root);
+	} else
+		respond(client_fd, doc_root);
 }
 
 void *get_in_addr(const struct sockaddr *const sa) {
@@ -346,21 +335,15 @@ void init_signals(void) {
 
 int main(const int argc, char **const argv) {
 	const char *port = DEFAULT_PORT;
-	char ipv4_address[INET_ADDRSTRLEN], *initwd,
-		*const doc_root = calloc(PATH_MAX + NT_LEN, sizeof(char));
+	char ipv4_address[INET_ADDRSTRLEN], msg_template[MSG_TEMP_LEN + PATH_MAX];
 	int masterfd, newfd;
 	struct sockaddr_storage client_addr;
 	struct addrinfo addressinfo, *serviceinfo;
 	socklen_t sin_size = sizeof(client_addr);
 
-	if (!doc_root) {
-		fprintf(stderr, "Error: Memory allocation\n");
-		exit(EXIT_FAILURE);
-	}
-
 	init_signals();
 	if (argc > MAX_ARGS) {
-		fprintf(stderr, "Usage: ./single-HTTP [-h] [-v] [-p <unsigned int>]\n");
+		fprintf(stderr, "Usage: ./single-HTTP [-h] [-V] [-p <unsigned int>]\n");
 		exit(EXIT_FAILURE);
 	}
 	compute_flags(argc, argv, &port, &verbose_flag);
@@ -376,37 +359,30 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (get_socket(&masterfd, serviceinfo) == -1) {
-		free(doc_root);
+	if (get_socket(&masterfd, serviceinfo) == -1)
 		exit(EXIT_FAILURE);
-	}
 
 	if (listen(masterfd, BACKLOG) == -1) {
 		perror(strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
-	initwd = getcwd(NULL, PATH_MAX);
-	if (!initwd) {
-		perror(strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+	char *const doc_root = calloc(PATH_MAX + NT_LEN, sizeof(char)),
+		 *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
-	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
-
-	if (!msg) {
+	if (!doc_root || !msg) {
 		fprintf(stderr, "Error: Memory allocation\n");
 		exit(EXIT_FAILURE);
 	}
 	strncpy(doc_root, ROOT_DIR, ROOT_DIR_LEN);
 
 	if (verbose_flag)
-		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, initwd);
+		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, doc_root);
 
 	while (sigint_flag) {
 		doc_root[ROOT_DIR_LEN] = '\0';
 
-		newfd = accept(masterfd, (struct sockaddr *)&client_addr, &sin_size);
+		newfd = accept(masterfd, (struct sockaddr*)&client_addr, &sin_size);
 
 		if (newfd == -1) {
 			server_log(strerror(errno));
@@ -419,9 +395,15 @@ int main(const int argc, char **const argv) {
 			server_log(strerror(errno));
 			continue;
 		}
-		determine_response(newfd, msg, doc_root, ipv4_address);
+		// Move into one function?
+		char **const reqlines = get_req_lines(msg);
+		determine_root(reqlines);
+		strncat(doc_root, reqlines[1], PATH_MAX);
+		snprintf(msg_template, 41 + PATH_MAX, MSG_TEMPLATE, ipv4_address, reqlines[1]); // TMP
+		server_log(msg_template);
+		determine_resp(newfd, reqlines, doc_root);
+		free_req_lines(reqlines);
 	}
-	free(initwd);
 	free(msg);
 	free(doc_root);
 	return 0;
