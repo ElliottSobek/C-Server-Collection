@@ -145,23 +145,17 @@ void server_log(const char *const msg) {
 	free(log_dir);
 }
 
-void process_php(const int client_fd, const char *const file_path) { // Think its done
+void process_php(const int client_fd, const char *const file_path) { // Done
 	const pid_t c_pid = fork();
 
-	if (c_pid == -1) {
+	if (c_pid == -1)
 		server_log(strerror(errno));
-		exit(EXIT_FAILURE);
-	}
 
 	if (c_pid == 0) {
 		dup2(client_fd, STDOUT_FILENO);
 		execl("/usr/bin/php", "php", file_path, (char *) NULL);
 	}
 	close(client_fd);
-	// char *const command[PATH_MAX];
-	// snprintf(command, PATH_MAX, "php %s", file_path);
-	// if (system(command) == -1)
-		// server_log(strerror(errno));
 }
 
 void send_file(const int client_fd, const char *const path) { // Done
