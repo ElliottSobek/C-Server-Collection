@@ -1,6 +1,5 @@
 // Bug with random get???
 // HTTP/1.0 vs HTTP/1.1
-// errno for mallocs
 
 #include <stdio.h>
 #include <string.h>
@@ -61,7 +60,7 @@
 
 bool verbose_flag = false, sigint_flag = true;
 
-bool is_valid_port(const char *const port) {
+bool is_valid_port(const char *const port) { // Done
 	const int port_num = atoi(port);
 
 	return ((port_num > PORT_MIN) && (port_num < PORT_MAX));
@@ -76,7 +75,7 @@ bool is_valid_request(char **const reqline) { // Good for now
 	return true;
 }
 
-void determine_root(char **const reqlines) {
+void determine_root(char **const reqlines) { // Done
 	char *const path = reqlines[1];
 
 	if (strncmp(path, "/\0", MDEFAULT_PAGE_LEN) == 0)
@@ -85,7 +84,7 @@ void determine_root(char **const reqlines) {
 		memmove(path, path + 1, strlen(path));
 }
 
-void compute_flags(const int argc, char **const argv, const char **const port, bool *v_flag) {
+void compute_flags(const int argc, char **const argv, const char **const port, bool *v_flag) { // Done
 	int c;
 
 	while ((c = getopt(argc, argv, "hVp:")) != -1) {
@@ -146,7 +145,7 @@ void server_log(const char *const msg) {
 	free(log_dir);
 }
 
-void process_php(const int client_fd, const char *const file_path) {
+void process_php(const int client_fd, const char *const file_path) { // Think its done
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1) {
@@ -158,9 +157,14 @@ void process_php(const int client_fd, const char *const file_path) {
 		dup2(client_fd, STDOUT_FILENO);
 		execl("/usr/bin/php", "php", file_path, (char *) NULL);
 	}
+	close(client_fd);
+	// char *const command[PATH_MAX];
+	// snprintf(command, PATH_MAX, "php %s", file_path);
+	// if (system(command) == -1)
+		// server_log(strerror(errno));
 }
 
-void send_file(const int client_fd, const char *const path) {
+void send_file(const int client_fd, const char *const path) { // Done
 	const int fd = open(path, O_RDONLY);
 
 	if (fd > -1) {
@@ -185,7 +189,7 @@ void send_file(const int client_fd, const char *const path) {
 	close(client_fd);
 }
 
-void respond(const int client_fd, char *const path) {
+void respond(const int client_fd, char *const path) { // Minify path output
 	const int fd = open(path, O_RDONLY);
 
 	if (fd > -1) {
@@ -222,7 +226,7 @@ void respond(const int client_fd, char *const path) {
 	close(fd);
 }
 
-char **get_req_lines(char *msg) {
+char **get_req_lines(char *msg) { // What todo if any toks are null?
 	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char*));
 
 	if (!reqline) {
@@ -250,13 +254,13 @@ char **get_req_lines(char *msg) {
 	return reqline;
 }
 
-void free_req_lines(char **const reqline) {
+void free_req_lines(char **const reqline) { // Done
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++)
 		free(reqline[i]);
 	free(reqline);
 }
 
-void determine_resp(const int client_fd, char **const reqline, char *const doc_root) {
+void determine_resp(const int client_fd, char **const reqline, char *const doc_root) { // Inline?
 	if (!is_valid_request(reqline)) {
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqline[0], reqline[1]);
@@ -266,7 +270,7 @@ void determine_resp(const int client_fd, char **const reqline, char *const doc_r
 		respond(client_fd, doc_root);
 }
 
-void *get_in_addr(const struct sockaddr *const sa) {
+void *get_in_addr(const struct sockaddr *const sa) { // Done
 	if (sa->sa_family == AF_INET)
 		return &(((struct sockaddr_in *)sa)->sin_addr);
 
@@ -280,7 +284,7 @@ void init_addrinfo(struct addrinfo *const addressinfo) {
 	(*addressinfo).ai_flags = AI_PASSIVE | AI_V4MAPPED; // Gen socket, IPV4
 }
 
-int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
+int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Done
 	const short yes = 1;
 	const struct addrinfo *p;
 
@@ -315,11 +319,11 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) {
 
 }
 
-void handle_sigint(const int arg) {
+void handle_sigint(const int arg) { // Done
 	sigint_flag = false;
 }
 
-void init_signals(void) {
+void init_signals(void) { // Done
 	struct sigaction new_action_int;
 
 	new_action_int.sa_handler = handle_sigint;
@@ -333,7 +337,7 @@ void init_signals(void) {
 	}
 }
 
-int main(const int argc, char **const argv) {
+int main(const int argc, char **const argv) { // Move types?, Minify fucntion calls?
 	const char *port = DEFAULT_PORT;
 	char ipv4_address[INET_ADDRSTRLEN], msg_template[MSG_TEMP_LEN + PATH_MAX];
 	int masterfd, newfd;
