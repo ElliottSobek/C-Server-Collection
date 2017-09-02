@@ -180,7 +180,15 @@ void send_file(const int client_fd, const char *const path) { // Done
 	close(client_fd);
 }
 
-void respond(const int client_fd, const char *const path) {
+void respond(const int client_fd, char **const reqlines, const char *const path) { // Done
+	if (!is_valid_request(reqlines)) {
+		if (verbose_flag)
+			printf("%s %s [400 Bad Request]\n", reqlines[0], reqlines[1]);
+		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
+		send_file(client_fd, "http-code-responses/400.html");
+		return;
+	}
+
 	const int fd = open(path, O_RDONLY);
 	const char *const path_m = &path[ROOT_DIR_LEN];
 
@@ -218,7 +226,7 @@ void respond(const int client_fd, const char *const path) {
 	close(fd);
 }
 
-char **get_req_lines(char *msg) { // Clean up
+char **get_req_lines(char *msg) { // Done
 	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char*));
 
 	if (!reqline) {
@@ -240,14 +248,12 @@ char **get_req_lines(char *msg) { // Clean up
 		return NULL;
 
 	strncpy(reqline[0], tok, (strlen(tok) + NT_LEN));
-
 	tok = strtok(NULL, " \t");
 
 	if (!tok)
 		return NULL;
 
 	strncpy(reqline[1], tok, (strlen(tok) + NT_LEN));
-
 	tok = strtok(NULL, " \t\n");
 
 	if (!tok)
@@ -268,17 +274,7 @@ void free_req_lines(char **const reqline) { // Done
 	free(reqline);
 }
 
-void determine_resp(const int client_fd, char **const reqline, char *const doc_root) { // Inline?
-	if (!is_valid_request(reqline)) {
-		if (verbose_flag)
-			printf("%s %s [400 Bad Request]\n", reqline[0], reqline[1]);
-		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
-		send_file(client_fd, "http-code-responses/400.html");
-	} else
-		respond(client_fd, doc_root);
-}
-
-void init_addrinfo(struct addrinfo *const addressinfo) {
+void init_addrinfo(struct addrinfo *const addressinfo) { // Done
 	memset(addressinfo, 0, sizeof(*addressinfo));
 	(*addressinfo).ai_family = AF_INET; // IPV4
 	(*addressinfo).ai_socktype = SOCK_STREAM; // TCP
@@ -338,9 +334,28 @@ void init_signals(void) { // Done
 	}
 }
 
-int main(const int argc, char **const argv) { // Move types?, Minify fucntion calls?
+void process_request(const int fd, char *msg, char *doc_root, const char *const ipv4_address) { // Done
+	char cust_msg[MSG_TEMP_LEN + PATH_MAX],
+		 **const reqlines = get_req_lines(msg);
+
+	if (!reqlines) {
+		snprintf(cust_msg, 29 + INET_ADDRSTRLEN, "Connection from %s; BAD REQUEST", ipv4_address);
+		server_log(cust_msg);
+		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
+		send_file(fd, "http-code-responses/400.html");
+	} else {
+		determine_root(reqlines);
+		strncat(doc_root, reqlines[1], PATH_MAX);
+		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, MSG_TEMPLATE, ipv4_address, reqlines[1]);
+		server_log(cust_msg);
+		respond(fd, reqlines, doc_root);
+	}
+	free_req_lines(reqlines);
+}
+
+int main(const int argc, char **const argv) { // Move types?
 	const char *port = DEFAULT_PORT;
-	char ipv4_address[INET_ADDRSTRLEN], cust_msg[MSG_TEMP_LEN + PATH_MAX];
+	char ipv4_address[INET_ADDRSTRLEN];
 	int masterfd, newfd;
 	struct addrinfo addressinfo, *serviceinfo;
 	struct sockaddr client_addr;
@@ -398,26 +413,10 @@ int main(const int argc, char **const argv) { // Move types?, Minify fucntion ca
 
 		inet_ntop(AF_INET, &(((struct sockaddr_in*)&client_addr)->sin_addr), ipv4_address, INET_ADDRSTRLEN);
 
-		if (recv(newfd, msg, MSG_LEN, 0) < 0) {
+		if (recv(newfd, msg, MSG_LEN, 0) > 0)
+			process_request(newfd, msg, doc_root, ipv4_address);
+		else
 			server_log(strerror(errno));
-			continue;
-		}
-		// Move into one function?
-		char **const reqlines = get_req_lines(msg);
-			if (!reqlines) {
-				snprintf(cust_msg, 29 + INET_ADDRSTRLEN, "Connection from %s; BAD REQUEST", ipv4_address); // TMP
-				server_log(cust_msg);
-				send(newfd, BAD_REQUEST, CODE_400_LEN, 0);
-				send_file(newfd, "http-code-responses/400.html");
-				free_req_lines(reqlines);
-				continue;
-			}
-		determine_root(reqlines);
-		strncat(doc_root, reqlines[1], PATH_MAX);
-		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, MSG_TEMPLATE, ipv4_address, reqlines[1]); // TMP
-		server_log(cust_msg);
-		determine_resp(newfd, reqlines, doc_root);
-		free_req_lines(reqlines);
 	}
 	free(msg);
 	free(doc_root);
