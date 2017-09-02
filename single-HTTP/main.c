@@ -14,47 +14,43 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#define ROOT_DIR "/home/elliott/Github/C-Server-Collection/single-HTTP/"
-#define DEFAULT_PORT "8888"
 #define OK "HTTP/1.1 200 OK\n\n"
+#define CREATED "HTTP/1.1 201 CREATED\n\n"
 #define NOT_FOUND "HTTP/1.1 404 NOT FOUND\n\n"
 #define FORBIDDEN "HTTP/1.1 403 FORBIDDEN\n\n"
 #define BAD_REQUEST "HTTP/1.1 400 BAD REQUEST\n\n"
-#define CREATED "HTTP/1.1 201 CREATED\n\n"
-#define TIMEOUT "HTTP/1.1 408 REQUEST TIME-OUT\n\n"
 #define SERVER_ERROR "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n"
+
+
+#define ROOT_DIR "/home/elliott/Github/C-Server-Collection/single-HTTP/"
 #define LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
-#define HOSTNAME "127.0.0.1\n"
+#define DEFAULT_PORT "8888"
 #define MSG_TEMPLATE "Connection from %s for file %s"
 
 #define BACKLOG 1
-#define MAX_ARGS 4
-#define PACKET_MAX 1024
-#define ASC_TIME_MAX 24
-
-#define MSG_LEN 4096
-#define NT_LEN 1
-#define ROOT_DIR_LEN 53
-#define GET_REQ_LEN 3
-#define HTTP_VER_LEN 8
-#define PHP_EXT_LEN 4
-#define MDEFAULT_PAGE_LEN 2
-#define DEFAULT_PAGE_LEN 10
-#define LOG_FILE_LEN 7
-#define LOG_ROOT_LEN 58
-#define FTIME_MLEN 25
-#define FF_TIME_PATH_MLEN 19
-#define CODE_200_LEN 17
-#define CODE_400_LEN 26
-#define CODE_404_LEN 24
-#define CODE_403_LEN 24
-#define CODE_500_LEN 36
-#define REQLINE_LEN 128
-#define MSG_TEMP_LEN 41
-
-#define REQLINE_TOKEN_AMT 3
 #define PORT_MIN 0
 #define PORT_MAX 65536
+#define MAX_ARGS 4
+#define PACKET_MAX 1024
+#define REQLINE_TOKEN_AMT 3
+
+#define NT_LEN 1
+#define MSG_LEN 4096
+#define FTIME_MLEN 25
+#define GET_REQ_LEN 3
+#define PHP_EXT_LEN 4
+#define REQLINE_LEN 128
+#define HTTP_VER_LEN 8
+#define ROOT_DIR_LEN 53
+#define CODE_200_LEN 17
+#define CODE_400_LEN 26
+#define CODE_403_LEN 24
+#define CODE_404_LEN 24
+#define CODE_500_LEN 36
+#define MSG_TEMP_LEN 41
+#define DEFAULT_PAGE_LEN 10
+#define MDEFAULT_PAGE_LEN 2
+#define FF_TIME_PATH_MLEN 19
 
 bool verbose_flag = false, sigint_flag = true;
 
@@ -190,13 +186,12 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 	}
 
 	const int fd = open(path, O_RDONLY);
-	const char *const path_m = &path[ROOT_DIR_LEN];
 
 	if (fd > -1) {
 		close(fd);
 
 		if (verbose_flag)
-			printf("GET %s [200 OK]\n", path_m);
+			printf("GET %s [200 OK]\n", reqlines[1]);
 		send(client_fd, OK, CODE_200_LEN, 0);
 		const char *extension = strrchr(path, '.');
 
@@ -207,19 +202,19 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 	}
 	else if (errno == ENOENT) {
 		if (verbose_flag)
-			printf("GET %s [404 Not Found]\n", path_m);
+			printf("GET %s [404 Not Found]\n", reqlines[1]);
 		send(client_fd, NOT_FOUND, CODE_404_LEN, 0);
 		send_file(client_fd, "http-code-responses/404.html");
 	}
 	else if (errno == EACCES) {
 		if (verbose_flag)
-			printf("GET %s [403 Access Denied]\n", path_m);
+			printf("GET %s [403 Access Denied]\n", reqlines[1]);
 		send(client_fd, FORBIDDEN, CODE_403_LEN, 0);
 		send_file(client_fd, "http-code-responses/403.html");
 	}
 	else {
 		if (verbose_flag)
-			printf("GET %s [500 Internal Server Error]\n", path_m);
+			printf("GET %s [500 Internal Server Error]\n", reqlines[1]);
 		send(client_fd, SERVER_ERROR, CODE_500_LEN, 0);
 		send_file(client_fd, "http-code-responses/500.html");
 	}
