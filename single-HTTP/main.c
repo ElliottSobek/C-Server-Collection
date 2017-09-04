@@ -51,7 +51,6 @@
 #define CODE_500_LEN 36
 #define MSG_TEMP_LEN 41
 #define DEFAULT_PAGE_LEN 10
-#define DEFAULT_ROOT_LEN 53
 #define MDEFAULT_PAGE_LEN 2
 #define FF_TIME_PATH_MLEN 19
 
@@ -156,7 +155,7 @@ void server_log(const char *const msg) { // Look into setuid & setgid bits
 	mkdir(ff_time_path, mode_d);
 
 	strftime(ff_time_path, 20, "%Y/%b/%U/%a.log", t_data);
-	snprintf(log_dir, PATH_MAX, "%s%s", DEFAULT_LOG_ROOT, ff_time_path);
+	snprintf(log_dir, PATH_MAX, "%s%s", _log_root, ff_time_path);
 
 	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
 	if (fd == -1)
@@ -360,7 +359,7 @@ void init_signals(void) { // Done
 	}
 }
 
-void process_request(const int fd, char *msg, char *doc_root, const char *const ipv4_address) { // Done
+void process_request(const int fd, char *msg, const char *const ipv4_address) { // Done
 	char cust_msg[MSG_TEMP_LEN + PATH_MAX],
 		 **const reqlines = get_req_lines(msg);
 
@@ -371,10 +370,10 @@ void process_request(const int fd, char *msg, char *doc_root, const char *const 
 		send_file(fd, "http-code-responses/400.html");
 	} else {
 		determine_root(reqlines);
-		strncat(doc_root, reqlines[1], PATH_MAX);
+		strncat(_doc_root, reqlines[1], PATH_MAX);
 		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, MSG_TEMPLATE, ipv4_address, reqlines[1]);
 		server_log(cust_msg);
-		respond(fd, reqlines, doc_root);
+		respond(fd, reqlines, _doc_root);
 	}
 	free_req_lines(reqlines);
 }
@@ -415,20 +414,20 @@ int main(const int argc, char **const argv) { // Move types?
 		exit(EXIT_FAILURE);
 	}
 
-	char *const doc_root = calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		 *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
+	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
-	if (!doc_root || !msg) {
+	if (!msg) {
 		server_log(strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	strncpy(doc_root, DEFAULT_ROOT, DEFAULT_ROOT_LEN);
 
 	if (verbose_flag)
-		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", _port, doc_root);
+		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", _port, _doc_root);
+
+	const int default_root_len = strlen(_doc_root);
 
 	while (sigint_flag) {
-		doc_root[DEFAULT_ROOT_LEN] = '\0';
+		_doc_root[default_root_len] = '\0';
 		newfd = accept(masterfd, &client_addr, &sin_size);
 
 		if (newfd == -1) {
@@ -439,12 +438,11 @@ int main(const int argc, char **const argv) { // Move types?
 		inet_ntop(AF_INET, &(((struct sockaddr_in*)&client_addr)->sin_addr), ipv4_address, INET_ADDRSTRLEN);
 
 		if (recv(newfd, msg, MSG_LEN, 0) > 0)
-			process_request(newfd, msg, doc_root, ipv4_address);
+			process_request(newfd, msg, ipv4_address);
 		else
 			server_log(strerror(errno));
 	}
 	free(msg);
-	free(doc_root);
 	return 0;
 }
 
