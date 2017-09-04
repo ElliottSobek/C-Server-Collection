@@ -1,3 +1,10 @@
+// Improve conf file logic, i.e defn=val
+// Improve error checking for conf file reading
+// Add code 501 & 503 for POST and DELETE
+// Test permission and file making for other users
+// Format, i.e types and scope
+// git push
+
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -20,7 +27,8 @@
 #define FORBIDDEN "HTTP/1.1 403 FORBIDDEN\n\n"
 #define BAD_REQUEST "HTTP/1.1 400 BAD REQUEST\n\n"
 #define SERVER_ERROR "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n"
-
+#define NOT_SUPPORTED "HTTP/1.1 505 HTTP VERSION NOT SUPPORTED\n\n"
+#define NOT_IMPLEMENTED "HTTP/1.1 501 NOT IMPLEMENTED\n\n"
 
 #define DEFAULT_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/"
 #define DEFAULT_LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
@@ -33,6 +41,8 @@
 #define PORT_MAX 65536
 #define MAX_ARGS 4
 #define PACKET_MAX 1024
+#define HTTP_VER_AMT 3
+#define HTTP_REQ_AMT 8
 #define REQLINE_TOKEN_AMT 3
 
 #define NT_LEN 1
@@ -49,14 +59,24 @@
 #define CODE_403_LEN 24
 #define CODE_404_LEN 24
 #define CODE_500_LEN 36
+#define	CODE_501_LEN 32
+#define CODE_505_LEN 43
 #define MSG_TEMP_LEN 41
 #define DEFAULT_PAGE_LEN 10
 #define MDEFAULT_PAGE_LEN 2
 #define FF_TIME_PATH_MLEN 19
 
+typedef struct http_req_s {
+	char *req, *file, *ver;
+} http_req_t;
+
 char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT,
 	 _log_root[PATH_MAX] = DEFAULT_LOG_ROOT;
+const char *const _http_requests[HTTP_REQ_AMT] = {"GET", "HEAD", "POST", "PUT",
+												 "DELETE", "CONNECT", "OPTIONS",
+												 "TRACE"},
+		   *const _http_ver[HTTP_VER_AMT] = {"HTTP/1.0", "HTTP/1.1", "HTTP/2.0"};
 bool verbose_flag = false, sigint_flag = true;
 
 bool is_valid_port(void) { // Done
@@ -65,13 +85,16 @@ bool is_valid_port(void) { // Done
 	return ((port_num > PORT_MIN) && (port_num < PORT_MAX));
 }
 
-bool is_valid_request(char **const reqline) { // Good for now
-	if (strncmp(reqline[0], "GET", GET_REQ_LEN) != 0)
-		return false;
-	if ((strncmp(reqline[2], "HTTP/1.0", HTTP_VER_LEN) != 0) && (
-		strncmp(reqline[2], "HTTP/1.1", HTTP_VER_LEN) != 0))
-		return false;
-	return true;
+bool is_valid_request(char **const reqline) { // Done
+	for (int i = 0; i < HTTP_REQ_AMT; i++)
+		if (strncmp(reqline[0], _http_requests[i], strlen(_http_requests[i])) == 0)
+			return true;
+
+	for (int i = 0; i < HTTP_VER_AMT; i++)
+		if (strncmp(reqline[2], _http_ver[i], strlen(_http_ver[i])) == 0)
+			return true;
+
+	return false;
 }
 
 void determine_root(char **const reqlines) { // Done
@@ -83,7 +106,7 @@ void determine_root(char **const reqlines) { // Done
 		memmove(path, path + 1, strlen(path));
 }
 
-void load_configuration(const char *const path) {
+void load_configuration(const char *const path) { // Needs logic improvement
 	const char *extension = strrchr(path, '.');
 
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
@@ -214,6 +237,12 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 		send_file(client_fd, "http-code-responses/400.html");
 		return;
 	}
+
+	// if reqline[0] != GET
+	// goto not implemented, code 501
+
+	// if reqline[2] != HTTP/1.0
+	// goto not implemented, code 505
 
 	const int fd = open(path, O_RDONLY);
 
