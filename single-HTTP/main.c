@@ -22,8 +22,9 @@
 #define SERVER_ERROR "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n"
 
 
-#define ROOT_DIR "/home/elliott/Github/C-Server-Collection/single-HTTP/"
-#define LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
+#define DEFAULT_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/"
+#define DEFAULT_LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
+
 #define DEFAULT_PORT "8888"
 #define MSG_TEMPLATE "Connection from %s for file %s"
 
@@ -36,12 +37,13 @@
 
 #define NT_LEN 1
 #define MSG_LEN 4096
+#define PORT_LEN 5
 #define FTIME_MLEN 25
 #define GET_REQ_LEN 3
 #define PHP_EXT_LEN 4
 #define REQLINE_LEN 128
+#define CONF_EXT_LEN 5
 #define HTTP_VER_LEN 8
-#define ROOT_DIR_LEN 53
 #define CODE_200_LEN 17
 #define CODE_400_LEN 26
 #define CODE_403_LEN 24
@@ -49,13 +51,17 @@
 #define CODE_500_LEN 36
 #define MSG_TEMP_LEN 41
 #define DEFAULT_PAGE_LEN 10
+#define DEFAULT_ROOT_LEN 53
 #define MDEFAULT_PAGE_LEN 2
 #define FF_TIME_PATH_MLEN 19
 
+char _port[PORT_LEN] = DEFAULT_PORT,
+	 _doc_root[PATH_MAX] = DEFAULT_ROOT,
+	 _log_root[PATH_MAX] = DEFAULT_LOG_ROOT;
 bool verbose_flag = false, sigint_flag = true;
 
-bool is_valid_port(const char *const port) { // Done
-	const int port_num = atoi(port);
+bool is_valid_port(void) { // Done
+	const int port_num = atoi(_port);
 
 	return ((port_num > PORT_MIN) && (port_num < PORT_MAX));
 }
@@ -78,22 +84,47 @@ void determine_root(char **const reqlines) { // Done
 		memmove(path, path + 1, strlen(path));
 }
 
-void compute_flags(const int argc, char **const argv, const char **const port, bool *v_flag) { // Done
+void load_configuration(const char *const path) {
+	const char *extension = strrchr(path, '.');
+
+	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
+		fprintf(stderr, "-s option takes a configuration file as an argument; example.conf\n");
+		exit(EXIT_FAILURE);
+	}
+
+	char defn[8 + NT_LEN], value[PATH_MAX + NT_LEN];
+	FILE *conf_f = fopen(path, "r");
+
+	if (conf_f) {
+		fscanf(conf_f, "%s %s", defn, value);
+		strncpy(_port, value, PORT_LEN);
+		fscanf(conf_f, "%s %s", defn, value);
+		strncpy(_doc_root, value, PATH_MAX);
+		fscanf(conf_f, "%s %s", defn, value);
+		strncpy(_log_root, value, PATH_MAX);
+		fclose(conf_f);
+	} else {
+		fprintf(stderr, "%s", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+}
+
+void compute_flags(const int argc, char **const argv, bool *v_flag) { // Done
 	int c;
 
-	while ((c = getopt(argc, argv, "hVp:")) != -1) {
+	while ((c = getopt(argc, argv, "hVs:")) != -1) {
 		switch (c) {
 		case 'h':
-			printf("Usage: ./single-HTTP [-h] [-V] [-p <unsigned int>]\n"
+			printf("Usage: ./single-HTTP [-h] [-V] [-s <configuration file>]\n"
 				"-h\tHelp menu\n"
 				"-V\tVerbose\n"
-				"-p\t<Unsigned Int>\tPort number. 1-65535; 1-1024 require root privileges.\n");
+				"-s\tLoad a configuration file\n");
 			exit(EXIT_SUCCESS);
-		case 'p':
-			*port = optarg;
-			break;
 		case 'V':
 			*v_flag = true;
+			break;
+		case 's':
+			load_configuration(optarg);
 			break;
 		case '?':
 			exit(EXIT_FAILURE);
@@ -125,7 +156,7 @@ void server_log(const char *const msg) { // Look into setuid & setgid bits
 	mkdir(ff_time_path, mode_d);
 
 	strftime(ff_time_path, 20, "%Y/%b/%U/%a.log", t_data);
-	snprintf(log_dir, PATH_MAX, "%s%s", LOG_ROOT, ff_time_path);
+	snprintf(log_dir, PATH_MAX, "%s%s", DEFAULT_LOG_ROOT, ff_time_path);
 
 	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
 	if (fd == -1)
@@ -349,7 +380,6 @@ void process_request(const int fd, char *msg, char *doc_root, const char *const 
 }
 
 int main(const int argc, char **const argv) { // Move types?
-	const char *port = DEFAULT_PORT;
 	char ipv4_address[INET_ADDRSTRLEN];
 	int masterfd, newfd;
 	struct addrinfo addressinfo, *serviceinfo;
@@ -361,18 +391,18 @@ int main(const int argc, char **const argv) { // Move types?
 
 	init_signals();
 	if (argc > MAX_ARGS) {
-		fprintf(stderr, "Usage: ./single-HTTP [-h] [-V] [-p <unsigned int>]\n");
+		fprintf(stderr, "Usage: ./single-HTTP [-h] [-V] [-s <configuration file>]\n");
 		exit(EXIT_FAILURE);
 	}
-	compute_flags(argc, argv, &port, &verbose_flag);
-	if (!is_valid_port(port)) {
+	compute_flags(argc, argv, &verbose_flag);
+	if (!is_valid_port()) {
 		fprintf(stderr, "Error: Invalid port number\n");
 		exit(EXIT_FAILURE);
 	}
 
 	init_addrinfo(&addressinfo);
 
-	if (getaddrinfo(NULL, port, &addressinfo, &serviceinfo) != 0) {
+	if (getaddrinfo(NULL, _port, &addressinfo, &serviceinfo) != 0) {
 		perror(gai_strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -392,13 +422,13 @@ int main(const int argc, char **const argv) { // Move types?
 		server_log(strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	strncpy(doc_root, ROOT_DIR, ROOT_DIR_LEN);
+	strncpy(doc_root, DEFAULT_ROOT, DEFAULT_ROOT_LEN);
 
 	if (verbose_flag)
-		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", port, doc_root);
+		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", _port, doc_root);
 
 	while (sigint_flag) {
-		doc_root[ROOT_DIR_LEN] = '\0';
+		doc_root[DEFAULT_ROOT_LEN] = '\0';
 		newfd = accept(masterfd, &client_addr, &sin_size);
 
 		if (newfd == -1) {
