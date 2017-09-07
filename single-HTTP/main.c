@@ -1,8 +1,6 @@
 // Improve conf file logic, i.e defn=val
 // Improve error checking for conf file reading
-// Add code 501 & 503 for POST and DELETE
 // Test permission and file making for other users
-// Format, i.e types and scope
 // git push
 
 #include <stdio.h>
@@ -21,14 +19,14 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#define OK "HTTP/1.1 200 OK\n\n"
-#define CREATED "HTTP/1.1 201 CREATED\n\n"
-#define NOT_FOUND "HTTP/1.1 404 NOT FOUND\n\n"
-#define FORBIDDEN "HTTP/1.1 403 FORBIDDEN\n\n"
-#define BAD_REQUEST "HTTP/1.1 400 BAD REQUEST\n\n"
-#define SERVER_ERROR "HTTP/1.1 500 INTERNAL SERVER ERROR\n\n"
-#define NOT_SUPPORTED "HTTP/1.1 505 HTTP VERSION NOT SUPPORTED\n\n"
-#define NOT_IMPLEMENTED "HTTP/1.1 501 NOT IMPLEMENTED\n\n"
+#define OK "HTTP/1.0 200 OK\n\n"
+#define CREATED "HTTP/1.0 201 CREATED\n\n"
+#define NOT_FOUND "HTTP/1.0 404 NOT FOUND\n\n"
+#define FORBIDDEN "HTTP/1.0 403 FORBIDDEN\n\n"
+#define BAD_REQUEST "HTTP/1.0 400 BAD REQUEST\n\n"
+#define SERVER_ERROR "HTTP/1.0 500 INTERNAL SERVER ERROR\n\n"
+#define NOT_SUPPORTED "HTTP/1.0 505 HTTP VERSION NOT SUPPORTED\n\n"
+#define NOT_IMPLEMENTED "HTTP/1.0 501 NOT IMPLEMENTED\n\n"
 
 #define DEFAULT_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/"
 #define DEFAULT_LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
@@ -65,10 +63,6 @@
 #define DEFAULT_PAGE_LEN 10
 #define MDEFAULT_PAGE_LEN 2
 #define FF_TIME_PATH_MLEN 19
-
-typedef struct http_req_s {
-	char *req, *file, *ver;
-} http_req_t;
 
 char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT,
@@ -229,7 +223,7 @@ void send_file(const int client_fd, const char *const path) { // Done
 	close(client_fd);
 }
 
-void respond(const int client_fd, char **const reqlines, const char *const path) { // Done
+void respond(const int client_fd, char **const reqlines, const char *const path) { // Add codes 501 & 505
 	if (!is_valid_request(reqlines)) {
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqlines[0], reqlines[1]);
@@ -238,11 +232,21 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 		return;
 	}
 
-	// if reqline[0] != GET
-	// goto not implemented, code 501
+	if (strncmp(reqline[2], "HTTP/1.0", HTTP_VER_LEN) != 0) {
+		if (verbose_flag)
+			printf("GET %s %s [505 Http Version Not Supported]\n", reqlines[1], reqlines[2]);
+		send(client_fd, NOT_SUPPORTED, CODE_505_LEN, 0);
+		send_file(client_fd, "http-code-responses/505.html");
+		return;
+	}
 
-	// if reqline[2] != HTTP/1.0
-	// goto not implemented, code 505
+	if (strncmp(reqline[1], "GET", 3) != 0) {
+		if (verbose_flag)
+			printf("%s %s [501 Not Implemented]\n", reqlines[0], reqlines[1]);
+		send(client_fd, NOT_IMPLEMENTED, CODE_501_LEN, 0);
+		send_file(client_fd, "http-code-responses/501.html");
+		return;
+	}
 
 	const int fd = open(path, O_RDONLY);
 
@@ -407,7 +411,7 @@ void process_request(const int fd, char *msg, const char *const ipv4_address) { 
 	free_req_lines(reqlines);
 }
 
-int main(const int argc, char **const argv) { // Move types?
+int main(const int argc, char **const argv) {
 	char ipv4_address[INET_ADDRSTRLEN];
 	int masterfd, newfd;
 	struct addrinfo addressinfo, *serviceinfo;
