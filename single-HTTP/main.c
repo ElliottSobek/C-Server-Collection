@@ -1,8 +1,3 @@
-// Improve conf file logic, i.e defn=val
-// Improve error checking for conf file reading
-// Test permission and file making for other users
-// git push
-
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -417,9 +412,6 @@ int main(const int argc, char **const argv) {
 	struct addrinfo addressinfo, *serviceinfo;
 	struct sockaddr client_addr;
 	socklen_t sin_size = sizeof(client_addr);
-
-	// setgid(1001);
-	// setuid(1001);
 
 	init_signals();
 	if (argc > MAX_ARGS) {
