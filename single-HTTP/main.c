@@ -57,8 +57,8 @@
 #define CODE_403_LEN 24
 #define CODE_404_LEN 24
 #define CODE_500_LEN 36
-#define	CODE_501_LEN 32
-#define CODE_505_LEN 43
+#define	CODE_501_LEN 30
+#define CODE_505_LEN 41
 #define MSG_TEMP_LEN 41
 #define DEFAULT_PAGE_LEN 10
 #define MDEFAULT_PAGE_LEN 2
@@ -232,7 +232,7 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 		return;
 	}
 
-	if (strncmp(reqline[2], "HTTP/1.0", HTTP_VER_LEN) != 0) {
+	if (strncmp(reqlines[2], "HTTP/2.0", HTTP_VER_LEN) == 0) {
 		if (verbose_flag)
 			printf("GET %s %s [505 Http Version Not Supported]\n", reqlines[1], reqlines[2]);
 		send(client_fd, NOT_SUPPORTED, CODE_505_LEN, 0);
@@ -240,7 +240,7 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 		return;
 	}
 
-	if (strncmp(reqline[1], "GET", 3) != 0) {
+	if (strncmp(reqlines[0], "GET", 3) != 0) {
 		if (verbose_flag)
 			printf("%s %s [501 Not Implemented]\n", reqlines[0], reqlines[1]);
 		send(client_fd, NOT_IMPLEMENTED, CODE_501_LEN, 0);
