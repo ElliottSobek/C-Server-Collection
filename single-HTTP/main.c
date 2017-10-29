@@ -146,8 +146,8 @@ void compute_flags(const int argc, char **const argv, bool *v_flag) { // Done
 void server_log(const char *const msg) { // Look into setuid & setgid bits
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
-	char *const log_dir = calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		 *const f_time = malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
+	char *const log_dir = (char*) calloc(PATH_MAX + NT_LEN, sizeof(char)),
+		 *const f_time = (char*) malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
 		 ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
 	const struct tm *const t_data = localtime(&cur_time);
 
@@ -197,7 +197,7 @@ void send_file(const int client_fd, const char *const path) { // Done
 	const int fd = open(path, O_RDONLY);
 
 	if (fd > -1) {
-		char *const f_contents = malloc((PACKET_MAX + NT_LEN) * sizeof(char));
+		char *const f_contents = (char*) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
 
 		if (!f_contents) {
 			server_log(strerror(errno));
@@ -280,7 +280,7 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 }
 
 char **get_req_lines(char *msg) { // Done
-	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char*));
+	char **const reqline = (char**) malloc(REQLINE_TOKEN_AMT * sizeof(char*));
 
 	if (!reqline) {
 		server_log(strerror(errno));
@@ -288,7 +288,7 @@ char **get_req_lines(char *msg) { // Done
 	}
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
-		reqline[i] = calloc(REQLINE_LEN + NT_LEN, sizeof(char));
+		reqline[i] = (char*) calloc(REQLINE_LEN + NT_LEN, sizeof(char));
 		if (!reqline[i]) {
 			server_log(strerror(errno));
 			exit(EXIT_FAILURE);
@@ -439,7 +439,7 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
+	char *const msg = (char*) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 	if (!msg) {
 		server_log(strerror(errno));
