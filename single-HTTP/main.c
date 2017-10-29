@@ -146,8 +146,8 @@ void compute_flags(const int argc, char **const argv, bool *v_flag) { // Done
 void server_log(const char *const msg) { // Look into setuid & setgid bits
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
-	char *const log_dir = (char*) calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		 *const f_time = (char*) malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
+	char *log_dir = (char*) calloc(PATH_MAX + NT_LEN, sizeof(char)),
+		 *f_time = (char*) malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
 		 ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
 	const struct tm *const t_data = localtime(&cur_time);
 
@@ -177,7 +177,9 @@ void server_log(const char *const msg) { // Look into setuid & setgid bits
 
 	close(fd);
 	free(f_time);
+	f_time = NULL;
 	free(log_dir);
+	log_dir = NULL;
 }
 
 void process_php(const int client_fd, const char *const file_path) { // Done
@@ -197,7 +199,7 @@ void send_file(const int client_fd, const char *const path) { // Done
 	const int fd = open(path, O_RDONLY);
 
 	if (fd > -1) {
-		char *const f_contents = (char*) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
+		char *f_contents = (char*) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
 
 		if (!f_contents) {
 			server_log(strerror(errno));
@@ -212,6 +214,7 @@ void send_file(const int client_fd, const char *const path) { // Done
 		}
 
 		free(f_contents);
+		f_contents = NULL;
 	}
 
 	close(fd);
@@ -316,15 +319,17 @@ char **get_req_lines(char *msg) { // Done
 	return reqline;
 }
 
-void free_req_lines(char **const reqline) { // Done
+void free_req_lines(char **reqline) { // Done
 	if (!reqline)
 		return;
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
 		if (!reqline[i])
 			continue;
 		free(reqline[i]);
+		reqline[i] = NULL;
 	}
 	free(reqline);
+	reqline = NULL;
 }
 
 void init_addrinfo(struct addrinfo *const addressinfo) { // Done
@@ -439,7 +444,7 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	char *const msg = (char*) malloc((MSG_LEN + NT_LEN) * sizeof(char));
+	char *msg = (char*) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 	if (!msg) {
 		server_log(strerror(errno));
@@ -468,6 +473,7 @@ int main(const int argc, char **const argv) {
 			server_log(strerror(errno));
 	}
 	free(msg);
+	msg = NULL;
 	return 0;
 }
 
