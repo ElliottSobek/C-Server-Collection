@@ -1,18 +1,18 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <signal.h>
 #include <time.h>
 #include <errno.h>
-#include <linux/limits.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include <netdb.h>
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include <sys/stat.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <linux/limits.h>
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
@@ -30,6 +30,7 @@
 #define MSG_TEMPLATE "Connection from %s for file %s"
 
 #define BACKLOG 1
+#define STR_MAX 2048
 #define PORT_MIN 0
 #define PORT_MAX 65536
 #define MAX_ARGS 4
@@ -76,11 +77,11 @@ bool is_valid_port(void) { // Done
 
 bool is_valid_request(char **const reqline) { // Done
 	for (int i = 0; i < HTTP_REQ_AMT; i++)
-		if (strncmp(reqline[0], _http_requests[i], strlen(_http_requests[i])) == 0)
+		if (strncmp(reqline[0], _http_requests[i], strnlen(_http_requests[i], STR_MAX)) == 0)
 			return true;
 
 	for (int i = 0; i < HTTP_VER_AMT; i++)
-		if (strncmp(reqline[2], _http_ver[i], strlen(_http_ver[i])) == 0)
+		if (strncmp(reqline[2], _http_ver[i], strnlen(_http_ver[i], STR_MAX)) == 0)
 			return true;
 
 	return false;
@@ -92,7 +93,7 @@ void determine_root(char **const reqlines) { // Done
 	if (strncmp(path, "/\0", MDEFAULT_PAGE_LEN) == 0)
 		strncpy(path, "index.html", DEFAULT_PAGE_LEN);
 	else
-		memmove(path, path + 1, strlen(path));
+		memmove(path, path + 1, strnlen(path, PATH_MAX));
 }
 
 void load_configuration(const char *const path) { // Needs logic improvement
@@ -146,8 +147,8 @@ void compute_flags(const int argc, char **const argv, bool *v_flag) { // Done
 void server_log(const char *const msg) { // Look into setuid & setgid bits
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
-	char *const log_dir = calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		 *const f_time = malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
+	char *log_dir = (char*) calloc(PATH_MAX + NT_LEN, sizeof(char)),
+		 *f_time = (char*) malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
 		 ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
 	const struct tm *const t_data = localtime(&cur_time);
 
@@ -177,7 +178,9 @@ void server_log(const char *const msg) { // Look into setuid & setgid bits
 
 	close(fd);
 	free(f_time);
+	f_time = NULL;
 	free(log_dir);
+	log_dir = NULL;
 }
 
 void process_php(const int client_fd, const char *const file_path) { // Done
@@ -197,7 +200,7 @@ void send_file(const int client_fd, const char *const path) { // Done
 	const int fd = open(path, O_RDONLY);
 
 	if (fd > -1) {
-		char *const f_contents = malloc((PACKET_MAX + NT_LEN) * sizeof(char));
+		char *f_contents = (char*) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
 
 		if (!f_contents) {
 			server_log(strerror(errno));
@@ -212,6 +215,7 @@ void send_file(const int client_fd, const char *const path) { // Done
 		}
 
 		free(f_contents);
+		f_contents = NULL;
 	}
 
 	close(fd);
@@ -280,7 +284,7 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 }
 
 char **get_req_lines(char *msg) { // Done
-	char **const reqline = malloc(REQLINE_TOKEN_AMT * sizeof(char*));
+	char **const reqline = (char**) malloc(REQLINE_TOKEN_AMT * sizeof(char*));
 
 	if (!reqline) {
 		server_log(strerror(errno));
@@ -288,7 +292,7 @@ char **get_req_lines(char *msg) { // Done
 	}
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
-		reqline[i] = calloc(REQLINE_LEN + NT_LEN, sizeof(char));
+		reqline[i] = (char*) calloc(REQLINE_LEN + NT_LEN, sizeof(char));
 		if (!reqline[i]) {
 			server_log(strerror(errno));
 			exit(EXIT_FAILURE);
@@ -300,31 +304,33 @@ char **get_req_lines(char *msg) { // Done
 	if (!tok)
 		return NULL;
 
-	strncpy(reqline[0], tok, (strlen(tok) + NT_LEN));
+	strncpy(reqline[0], tok, (strnlen(tok, STR_MAX) + NT_LEN));
 	tok = strtok(NULL, " \t");
 
 	if (!tok)
 		return NULL;
 
-	strncpy(reqline[1], tok, (strlen(tok) + NT_LEN));
+	strncpy(reqline[1], tok, (strnlen(tok, STR_MAX) + NT_LEN));
 	tok = strtok(NULL, " \t\n");
 
 	if (!tok)
 		return NULL;
 
-	strncpy(reqline[2], tok, (strlen(tok) + NT_LEN));
+	strncpy(reqline[2], tok, (strnlen(tok, STR_MAX) + NT_LEN));
 	return reqline;
 }
 
-void free_req_lines(char **const reqline) { // Done
+void free_req_lines(char **reqline) { // Done
 	if (!reqline)
 		return;
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
 		if (!reqline[i])
 			continue;
 		free(reqline[i]);
+		reqline[i] = NULL;
 	}
 	free(reqline);
+	reqline = NULL;
 }
 
 void init_addrinfo(struct addrinfo *const addressinfo) { // Done
@@ -439,7 +445,7 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	char *const msg = malloc((MSG_LEN + NT_LEN) * sizeof(char));
+	char *msg = (char*) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 	if (!msg) {
 		server_log(strerror(errno));
@@ -449,7 +455,7 @@ int main(const int argc, char **const argv) {
 	if (verbose_flag)
 		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", _port, _doc_root);
 
-	const int default_root_len = strlen(_doc_root);
+	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 
 	while (sigint_flag) {
 		_doc_root[default_root_len] = '\0';
@@ -468,6 +474,7 @@ int main(const int argc, char **const argv) {
 			server_log(strerror(errno));
 	}
 	free(msg);
+	msg = NULL;
 	return 0;
 }
 
