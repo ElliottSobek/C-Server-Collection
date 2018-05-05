@@ -68,8 +68,8 @@ char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT,
 	 _log_root[PATH_MAX] = DEFAULT_LOG_ROOT;
 const char *const _http_requests[HTTP_REQ_AMT] = {"GET", "HEAD", "POST", "PUT",
-												 "DELETE", "CONNECT", "OPTIONS",
-												 "TRACE"},
+												  "DELETE", "CONNECT", "OPTIONS",
+												  "TRACE"},
 		   *const _http_ver[HTTP_VER_AMT] = {"HTTP/1.0", "HTTP/1.1", "HTTP/2.0"};
 bool verbose_flag = false, sigint_flag = true;
 
@@ -79,7 +79,7 @@ bool is_valid_port(void) { // Done
 	return ((PORT_MIN < port_num) && (port_num < PORT_MAX));
 }
 
-bool is_valid_request(char **const reqline) { // Done
+bool is_valid_request(String *const reqline) { // Done
 	for (int i = 0; i < HTTP_REQ_AMT; i++)
 		if (strncmp(reqline[0], _http_requests[i], strnlen(_http_requests[i], STR_MAX)) == 0)
 			return true;
@@ -91,8 +91,8 @@ bool is_valid_request(char **const reqline) { // Done
 	return false;
 }
 
-void determine_root(char **const reqlines) { // Done
-	char *const path = reqlines[1];
+void determine_root(String *const reqlines) { // Done
+	String const path = reqlines[1];
 
 	if (strncmp(path, "/\0", MDEFAULT_PAGE_LEN) == 0)
 		strncpy(path, "index.html", DEFAULT_PAGE_LEN);
@@ -101,8 +101,8 @@ void determine_root(char **const reqlines) { // Done
 }
 
 // Make hash table and readline, strtok, and hash to set all variables
-void load_configuration(const char *const path) { // Needs logic improvement
-	const char *extension = strrchr(path, '.');
+void load_configuration(const String const path) { // Needs logic improvement
+	const String extension = strrchr(path, '.');
 
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
 		fprintf(stderr, "-s option takes a configuration file as an argument; example.conf\n");
@@ -132,7 +132,7 @@ void load_configuration(const char *const path) { // Needs logic improvement
 	}
 }
 
-void compute_flags(const int argc, char **const argv, bool *v_flag) { // Done
+void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	int c;
 
 	while ((c = getopt(argc, argv, "hVvs:")) != -1) {
@@ -159,7 +159,7 @@ void compute_flags(const int argc, char **const argv, bool *v_flag) { // Done
 	}
 }
 
-void server_log(const char *const msg) { // Look into setuid & setgid bits
+void server_log(const String const msg) { // Look into setuid & setgid bits
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
 	char *log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char)),
@@ -199,7 +199,7 @@ void server_log(const char *const msg) { // Look into setuid & setgid bits
 	log_dir = NULL;
 }
 
-void process_php(const int client_fd, const char *const file_path) { // Thread?
+void process_php(const int client_fd, const String const file_path) { // Thread?
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1)
@@ -212,11 +212,11 @@ void process_php(const int client_fd, const char *const file_path) { // Thread?
 	close(client_fd);
 }
 
-void send_file(const int client_fd, const char *const path) { // Done
+void send_file(const int client_fd, const String const path) { // Done
 	const int fd = open(path, O_RDONLY);
 
 	if (fd > -1) {
-		char *f_contents = (String) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
+		String f_contents = (String) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
 
 		if (!f_contents) {
 			server_log(strerror(errno));
@@ -238,7 +238,7 @@ void send_file(const int client_fd, const char *const path) { // Done
 	close(client_fd);
 }
 
-void respond(const int client_fd, char **const reqlines, const char *const path) { // Add codes 501 & 505
+void respond(const int client_fd, String *const reqlines, const String const path) { // Add codes 501
 	if (!is_valid_request(reqlines)) {
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqlines[0], reqlines[1]);
@@ -271,7 +271,7 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 		if (verbose_flag)
 			printf("GET %s [200 OK]\n", reqlines[1]);
 		send(client_fd, OK, CODE_200_LEN, 0);
-		const char *extension = strrchr(path, '.');
+		const String extension = strrchr(path, '.');
 
 		if (strncmp(extension, ".php", PHP_EXT_LEN) == 0)
 			process_php(client_fd, path);
@@ -299,8 +299,8 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 	close(fd);
 }
 
-char **get_req_lines(char *msg) { // Done
-	char **const reqline = (String*) malloc(REQLINE_TOKEN_AMT * sizeof(String));
+String *get_req_lines(String msg) { // Done
+	String *const reqline = (String*) malloc(REQLINE_TOKEN_AMT * sizeof(String));
 
 	if (!reqline) {
 		server_log(strerror(errno));
@@ -315,7 +315,7 @@ char **get_req_lines(char *msg) { // Done
 		}
 	}
 
-	char *tok = strtok(msg, " \t\n");
+	String tok = strtok(msg, " \t\n");
 
 	if (!tok)
 		return NULL;
@@ -336,7 +336,7 @@ char **get_req_lines(char *msg) { // Done
 	return reqline;
 }
 
-void free_req_lines(char **reqline) { // Done
+void free_req_lines(String *reqline) { // Done
 	if (!reqline)
 		return;
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
@@ -409,7 +409,7 @@ void init_signals(void) { // Done
 	}
 }
 
-void process_request(const int fd, char *msg, const char *const ipv4_address) { // Done
+void process_request(const int fd, String msg, const String const ipv4_address) { // Done
 	char cust_msg[MSG_TEMP_LEN + PATH_MAX],
 		 **const reqlines = get_req_lines(msg);
 
@@ -428,7 +428,7 @@ void process_request(const int fd, char *msg, const char *const ipv4_address) { 
 	free_req_lines(reqlines);
 }
 
-int main(const int argc, char **const argv) {
+int main(const int argc, String *const argv) {
 	char ipv4_address[INET_ADDRSTRLEN];
 	int masterfd, newfd;
 	struct addrinfo addressinfo, *serviceinfo;
@@ -461,7 +461,7 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	char *msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
+	String msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 	if (!msg) {
 		server_log(strerror(errno));
