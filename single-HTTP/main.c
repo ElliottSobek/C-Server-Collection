@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <libgen.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +29,7 @@
 
 #define DEFAULT_PORT "8888"
 #define MSG_TEMPLATE "Connection from %s for file %s"
-#define USAGE_MSG "Usage: ./single-HTTP [-h] [-V] [-v] [-s <configuration file>]\n"
+#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-s <configuration file>]\n"
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -132,7 +133,7 @@ void compute_flags(const int argc, char **const argv, bool *v_flag) { // Done
 				   "-h\tHelp menu\n"
 				   "-V\tVersion\n"
 				   "-v\tVerbose\n"
-				   "-s\tLoad a configuration file\n");
+				   "-s\tLoad a configuration file\n", basename(argv[0]));
 			exit(EXIT_SUCCESS);
 		case 'V':
 			printf("Version 0.1\n");
@@ -184,6 +185,7 @@ void server_log(const char *const msg) { // Look into setuid & setgid bits
 	close(fd);
 	free(f_time);
 	f_time = NULL;
+
 	free(log_dir);
 	log_dir = NULL;
 }
@@ -426,7 +428,7 @@ int main(const int argc, char **const argv) {
 
 	init_signals();
 	if (argc > MAX_ARGS) {
-		fprintf(stderr, USAGE_MSG);
+		fprintf(stderr, USAGE_MSG, basename(argv[0]));
 		exit(EXIT_FAILURE);
 	}
 	compute_flags(argc, argv, &verbose_flag);
