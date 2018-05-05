@@ -98,6 +98,7 @@ void determine_root(char **const reqlines) { // Done
 		memmove(path, path + 1, strnlen(path, PATH_MAX));
 }
 
+// Make hash table and readline, strtok, and hash to set all variables
 void load_configuration(const char *const path) { // Needs logic improvement
 	const char *extension = strrchr(path, '.');
 
@@ -106,16 +107,22 @@ void load_configuration(const char *const path) { // Needs logic improvement
 		exit(EXIT_FAILURE);
 	}
 
-	char defn[8 + NT_LEN], value[PATH_MAX + NT_LEN];
-	FILE *conf_f = fopen(path, "r");
+	char defn[55 + NT_LEN], value[PATH_MAX + NT_LEN];
+	FILE *conf_f = fopen(path, "r"); // Use open
 
 	if (conf_f) {
-		fscanf(conf_f, "%s %s", defn, value);
+		fscanf(conf_f, "%s%s", defn, value);
 		strncpy(_port, value, PORT_LEN);
-		fscanf(conf_f, "%s %s", defn, value);
+		printf("This is defn: %s\n", defn);
+		printf("This is port: %s\n", _port);
+		fscanf(conf_f, "%s%s", defn, value);
 		strncpy(_doc_root, value, PATH_MAX);
-		fscanf(conf_f, "%s %s", defn, value);
+		printf("This is defn: %s\n", defn);
+		printf("This is _doc_root: %s\n", value);
+		fscanf(conf_f, "%s%s", defn, value);
 		strncpy(_log_root, value, PATH_MAX);
+		printf("This is defn: %s\n", defn);
+		printf("This is _log_root: %s\n", value);
 		fclose(conf_f);
 	} else {
 		fprintf(stderr, "%s", strerror(errno));
