@@ -6,13 +6,15 @@ CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter \
 
 .PHONY: debug production clean
 
-debug: main.o
+debug: main.o hashtable.o
 	$(CC) $(CFLAGS) -g $< -o single-HTTP
 
-production: main.o
+production: main.o hashtable.o
 	$(CC) $(CFLAGS) -O3 $< -o single-HTTP
 
 main.o: main.c
+
+hashtable.o: Libraries/HashTable/hashtable.c
 
 clean:
 	$(RM) *.o
