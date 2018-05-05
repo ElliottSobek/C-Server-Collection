@@ -72,7 +72,7 @@ bool verbose_flag = false, sigint_flag = true;
 bool is_valid_port(void) { // Done
 	const int port_num = atoi(_port);
 
-	return ((port_num > PORT_MIN) && (port_num < PORT_MAX));
+	return ((PORT_MIN < port_num) && (port_num < PORT_MAX));
 }
 
 bool is_valid_request(char **const reqline) { // Done
@@ -426,7 +426,7 @@ int main(const int argc, char **const argv) {
 	}
 	compute_flags(argc, argv, &verbose_flag);
 	if (!is_valid_port()) {
-		fprintf(stderr, "Error: Invalid port number\n");
+		fprintf(stderr, "Error: Invalid port %s\n", _port);
 		exit(EXIT_FAILURE);
 	}
 
@@ -475,6 +475,7 @@ int main(const int argc, char **const argv) {
 	}
 	free(msg);
 	msg = NULL;
-	return 0;
+
+	return EXIT_SUCCESS;
 }
 
