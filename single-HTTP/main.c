@@ -15,7 +15,8 @@
 #include <sys/socket.h>
 #include <linux/limits.h>
 
-#include "Types.h"
+#include "types.h"
+#include "Libraries/HashTable/hashtable.h"
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
