@@ -28,6 +28,7 @@
 
 #define DEFAULT_PORT "8888"
 #define MSG_TEMPLATE "Connection from %s for file %s"
+#define USAGE_MSG "Usage: ./single-HTTP [-h] [-V] [-v] [-s <configuration file>]\n"
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -72,7 +73,7 @@ bool verbose_flag = false, sigint_flag = true;
 bool is_valid_port(void) { // Done
 	const int port_num = atoi(_port);
 
-	return ((port_num > PORT_MIN) && (port_num < PORT_MAX));
+	return ((PORT_MIN < port_num) && (port_num < PORT_MAX));
 }
 
 bool is_valid_request(char **const reqline) { // Done
@@ -124,15 +125,19 @@ void load_configuration(const char *const path) { // Needs logic improvement
 void compute_flags(const int argc, char **const argv, bool *v_flag) { // Done
 	int c;
 
-	while ((c = getopt(argc, argv, "hVs:")) != -1) {
+	while ((c = getopt(argc, argv, "hVvs:")) != -1) {
 		switch (c) {
 		case 'h':
-			printf("Usage: ./single-HTTP [-h] [-V] [-s <configuration file>]\n"
-				"-h\tHelp menu\n"
-				"-V\tVerbose\n"
-				"-s\tLoad a configuration file\n");
+			printf(USAGE_MSG
+				   "-h\tHelp menu\n"
+				   "-V\tVersion\n"
+				   "-v\tVerbose\n"
+				   "-s\tLoad a configuration file\n");
 			exit(EXIT_SUCCESS);
 		case 'V':
+			printf("Version 0.1\n");
+			exit(EXIT_SUCCESS);
+		case 'v':
 			*v_flag = true;
 			break;
 		case 's':
@@ -421,12 +426,12 @@ int main(const int argc, char **const argv) {
 
 	init_signals();
 	if (argc > MAX_ARGS) {
-		fprintf(stderr, "Usage: ./single-HTTP [-h] [-V] [-s <configuration file>]\n");
+		fprintf(stderr, USAGE_MSG);
 		exit(EXIT_FAILURE);
 	}
 	compute_flags(argc, argv, &verbose_flag);
 	if (!is_valid_port()) {
-		fprintf(stderr, "Error: Invalid port number\n");
+		fprintf(stderr, "Error: Invalid port %s\n", _port);
 		exit(EXIT_FAILURE);
 	}
 
@@ -475,6 +480,7 @@ int main(const int argc, char **const argv) {
 	}
 	free(msg);
 	msg = NULL;
-	return 0;
+
+	return EXIT_SUCCESS;
 }
 
