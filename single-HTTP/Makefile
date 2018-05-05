@@ -1,15 +1,16 @@
 CC = gcc
 
 CFLAGS = -Wall -Wextra -Wpedantic -Wno-unused-parameter \
-		 -Wno-unused-but-set-parameter -Werror -std=c99 -O0 -g \
+		 -Wno-unused-but-set-parameter -Werror -std=c99 \
 		 -D_POSIX_C_SOURCE=200809L
 
-.PHONY: all clean
+.PHONY: debug production clean
 
-all: main
+debug: main.o
+	$(CC) $(CFLAGS) -g $< -o single-HTTP
 
-main: main.o
-	$(CC) $(CFLAGS) $< -o single-HTTP
+production: main.o
+	$(CC) $(CFLAGS) -O3 $< -o single-HTTP
 
 main.o: main.c
 
