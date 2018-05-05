@@ -377,8 +377,8 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 
 	if (p)
 		return 0;
-	else
-		return -1;
+
+	return -1;
 
 }
 
