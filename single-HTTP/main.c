@@ -15,6 +15,8 @@
 #include <sys/socket.h>
 #include <linux/limits.h>
 
+#include "Types.h"
+
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
 #define NOT_FOUND "HTTP/1.0 404 NOT FOUND\n\n"
@@ -160,8 +162,8 @@ void compute_flags(const int argc, char **const argv, bool *v_flag) { // Done
 void server_log(const char *const msg) { // Look into setuid & setgid bits
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
-	char *log_dir = (char*) calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		 *f_time = (char*) malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
+	char *log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char)),
+		 *f_time = (String) malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
 		 ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
 	const struct tm *const t_data = localtime(&cur_time);
 
@@ -197,7 +199,7 @@ void server_log(const char *const msg) { // Look into setuid & setgid bits
 	log_dir = NULL;
 }
 
-void process_php(const int client_fd, const char *const file_path) { // Done
+void process_php(const int client_fd, const char *const file_path) { // Thread?
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1)
@@ -205,7 +207,7 @@ void process_php(const int client_fd, const char *const file_path) { // Done
 
 	if (c_pid == 0) {
 		dup2(client_fd, STDOUT_FILENO);
-		execl("/usr/bin/php", "php", file_path, (char*) NULL);
+		execl("/usr/bin/php", "php", file_path, (String) NULL);
 	}
 	close(client_fd);
 }
@@ -214,7 +216,7 @@ void send_file(const int client_fd, const char *const path) { // Done
 	const int fd = open(path, O_RDONLY);
 
 	if (fd > -1) {
-		char *f_contents = (char*) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
+		char *f_contents = (String) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
 
 		if (!f_contents) {
 			server_log(strerror(errno));
@@ -298,7 +300,7 @@ void respond(const int client_fd, char **const reqlines, const char *const path)
 }
 
 char **get_req_lines(char *msg) { // Done
-	char **const reqline = (char**) malloc(REQLINE_TOKEN_AMT * sizeof(char*));
+	char **const reqline = (String*) malloc(REQLINE_TOKEN_AMT * sizeof(String));
 
 	if (!reqline) {
 		server_log(strerror(errno));
@@ -306,7 +308,7 @@ char **get_req_lines(char *msg) { // Done
 	}
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
-		reqline[i] = (char*) calloc(REQLINE_LEN + NT_LEN, sizeof(char));
+		reqline[i] = (String) calloc(REQLINE_LEN + NT_LEN, sizeof(char));
 		if (!reqline[i]) {
 			server_log(strerror(errno));
 			exit(EXIT_FAILURE);
@@ -459,7 +461,7 @@ int main(const int argc, char **const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	char *msg = (char*) malloc((MSG_LEN + NT_LEN) * sizeof(char));
+	char *msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 	if (!msg) {
 		server_log(strerror(errno));
