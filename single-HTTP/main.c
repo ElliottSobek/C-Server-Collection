@@ -68,10 +68,21 @@
 char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT,
 	 _log_root[PATH_MAX] = DEFAULT_LOG_ROOT;
-const char *const _http_requests[HTTP_REQ_AMT] = {"GET", "HEAD", "POST", "PUT",
-												  "DELETE", "CONNECT", "OPTIONS",
-												  "TRACE"},
-		   *const _http_ver[HTTP_VER_AMT] = {"HTTP/1.0", "HTTP/1.1", "HTTP/2.0"};
+const String const _http_requests[HTTP_REQ_AMT] = {
+	"GET",
+	"HEAD",
+	"POST",
+	"PUT",
+	"DELETE",
+	"CONNECT",
+	"OPTIONS",
+	"TRACE"
+};
+String const _http_ver[HTTP_VER_AMT] = {
+	"HTTP/1.0",
+	"HTTP/1.1",
+	"HTTP/2.0"
+};
 bool verbose_flag = false, sigint_flag = true;
 
 bool is_valid_port(void) { // Done
@@ -163,9 +174,9 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 void server_log(const String const msg) { // Look into setuid & setgid bits
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
-	char *log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		 *f_time = (String) malloc((FTIME_MLEN + NT_LEN) * sizeof(char)),
-		 ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
+	String log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char)),
+		f_time = (String) malloc((FTIME_MLEN + NT_LEN) * sizeof(char));
+	char ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
 	const struct tm *const t_data = localtime(&cur_time);
 
 	if (!log_dir || !f_time) {
