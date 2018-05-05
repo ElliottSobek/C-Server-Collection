@@ -36,3 +36,34 @@ single-HTTP/single-HTTP
 # Directories
 testing/
 logs/
+
+# Databases
+*.sqlite3
+
+# Images
+*.png
+*.jpg
+*.tiff
+*.gif
+*.bmp
+*.jpeg
+*.svg
+
+# Audio
+*.wav
+*.flac
+*.opus
+*.mp3
+*.aac
+*.ogg
+*.pcm
+*.aiff
+*.wma
+*.alac
+
+# Video
+*.mp4
+*.mov
+*.avi
+*.flv
+*.wmv
