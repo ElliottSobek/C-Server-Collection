@@ -14,7 +14,7 @@ production: main.o hashtable.o
 
 main.o: main.c
 
-hashtable.o: Libraries/HashTable/hashtable.c
+hashtable.o: libraries/hashtable/hashtable.c
 
 clean:
 	$(RM) *.o
