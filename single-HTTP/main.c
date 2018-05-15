@@ -16,7 +16,8 @@
 #include <linux/limits.h>
 
 #include "types.h"
-#include "Libraries/HashTable/hashtable.h"
+#include "libraries/hashtable/hashtable.h"
+#include "libraries/minorhashtable/minorhashtable.h"
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
@@ -65,6 +66,8 @@
 #define MDEFAULT_PAGE_LEN 2
 #define FF_TIME_PATH_MLEN 19
 
+#define KBYTE_S 1024
+
 char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT,
 	 _log_root[PATH_MAX] = DEFAULT_LOG_ROOT;
@@ -112,6 +115,20 @@ void determine_root(String *const reqlines) { // Done
 		memmove(path, path + 1, strnlen(path, PATH_MAX));
 }
 
+String clean_config_line(String string) { // Done
+
+	while (*string < 'a' || *string > 'z')
+		string++;
+
+	String offset = strpbrk(string, " #\n");
+
+	if (!offset)
+		return string;
+	*offset = '\0';
+
+	return string;
+}
+
 // Make hash table and readline, strtok, and hash to set all variables
 void load_configuration(const String const path) { // Needs logic improvement
 	const String extension = strrchr(path, '.');
@@ -121,27 +138,38 @@ void load_configuration(const String const path) { // Needs logic improvement
 		exit(EXIT_FAILURE);
 	}
 
-	char defn[55 + NT_LEN], value[PATH_MAX + NT_LEN];
-	FILE *conf_f = fopen(path, "r"); // Use open
+	char buffer[KBYTE_S] = "";
+	String line = "", defn = "", value = "";
+	FILE *conf_f = fopen(path, "r");
 
-	if (conf_f) {
-		fscanf(conf_f, "%s%s", defn, value);
-		strncpy(_port, value, PORT_LEN);
-		printf("This is defn: %s\n", defn);
-		printf("This is port: %s\n", _port);
-		fscanf(conf_f, "%s%s", defn, value);
-		strncpy(_doc_root, value, PATH_MAX);
-		printf("This is defn: %s\n", defn);
-		printf("This is _doc_root: %s\n", value);
-		fscanf(conf_f, "%s%s", defn, value);
-		strncpy(_log_root, value, PATH_MAX);
-		printf("This is defn: %s\n", defn);
-		printf("This is _log_root: %s\n", value);
-		fclose(conf_f);
-	} else {
-		fprintf(stderr, "%s", strerror(errno));
-		exit(EXIT_FAILURE);
+	while (fgets(buffer, KBYTE_S, conf_f)) {
+		if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\t')
+			continue;
+		line = clean_config_line(buffer);
+		defn = strtok(line, "=");
+		value = strtok(NULL, "=");
+		// addhashtable_item()
 	}
+	exit(0);
+
+	// if (conf_f) {
+	// 	fscanf(conf_f, "%s%s", defn, value);
+	// 	strncpy(_port, value, PORT_LEN);
+	// 	printf("This is defn: %s\n", defn);
+	// 	printf("This is port: %s\n", _port);
+	// 	fscanf(conf_f, "%s%s", defn, value);
+	// 	strncpy(_doc_root, value, PATH_MAX);
+	// 	printf("This is defn: %s\n", defn);
+	// 	printf("This is _doc_root: %s\n", value);
+	// 	fscanf(conf_f, "%s%s", defn, value);
+	// 	strncpy(_log_root, value, PATH_MAX);
+	// 	printf("This is defn: %s\n", defn);
+	// 	printf("This is _log_root: %s\n", value);
+	// 	fclose(conf_f);
+	// } else {
+	// 	fprintf(stderr, "%s", strerror(errno));
+	// 	exit(EXIT_FAILURE);
+	// }
 }
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
