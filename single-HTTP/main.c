@@ -16,8 +16,20 @@
 #include <linux/limits.h>
 
 #include "types.h"
-#include "libraries/hashtable/hashtable.h"
-#include "libraries/minorhashtable/minorhashtable.h"
+// #include "libraries/hashtable/hashtable.h"
+#include "libraries/minhashtable/minhashtable.h"
+
+// Put in own file/lib
+#define BLACK "\033[0;30m"
+#define RED "\033[0;31m"
+#define GREEN "\033[0;32m"
+#define YELLOW "\033[0;33m"
+#define BLUE "\033[0;34m"
+#define MAGENTA "\033[0;35m"
+#define CYAN "\033[0;36m"
+#define WHITE "\033[0;37m"
+#define RESET "\033[0;0m"
+// End put in lib
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
@@ -32,7 +44,7 @@
 #define DEFAULT_LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
 
 #define DEFAULT_PORT "8888"
-#define MSG_TEMPLATE "Connection from %s for file %s"
+#define CONNECTION_TEMPLATE "Connection from %s for file %s"
 #define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-s <configuration file>]\n"
 
 #define BACKLOG 1
@@ -134,42 +146,48 @@ void load_configuration(const String const path) { // Needs logic improvement
 	const String extension = strrchr(path, '.');
 
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
-		fprintf(stderr, "-s option takes a configuration file as an argument; example.conf\n");
+		fprintf(stderr, RED "-s option takes a configuration file as an argument; example.conf\n" RESET);
 		exit(EXIT_FAILURE);
 	}
 
-	char buffer[KBYTE_S] = "";
-	String line = "", defn = "", value = "";
+	// char buffer[KBYTE_S] = "";
+	// String line = "", defn = "", value = "";
+	char defn[128], value[128];
 	FILE *conf_f = fopen(path, "r");
+	// MinHashTable minhashtable = create_ht();
 
-	while (fgets(buffer, KBYTE_S, conf_f)) {
-		if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\t')
-			continue;
-		line = clean_config_line(buffer);
-		defn = strtok(line, "=");
-		value = strtok(NULL, "=");
-		// addhashtable_item()
-	}
-	exit(0);
-
-	// if (conf_f) {
-	// 	fscanf(conf_f, "%s%s", defn, value);
-	// 	strncpy(_port, value, PORT_LEN);
-	// 	printf("This is defn: %s\n", defn);
-	// 	printf("This is port: %s\n", _port);
-	// 	fscanf(conf_f, "%s%s", defn, value);
-	// 	strncpy(_doc_root, value, PATH_MAX);
-	// 	printf("This is defn: %s\n", defn);
-	// 	printf("This is _doc_root: %s\n", value);
-	// 	fscanf(conf_f, "%s%s", defn, value);
-	// 	strncpy(_log_root, value, PATH_MAX);
-	// 	printf("This is defn: %s\n", defn);
-	// 	printf("This is _log_root: %s\n", value);
-	// 	fclose(conf_f);
-	// } else {
-	// 	fprintf(stderr, "%s", strerror(errno));
-	// 	exit(EXIT_FAILURE);
+	// while (fgets(buffer, KBYTE_S, conf_f)) {
+	// 	if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\t')
+	// 		continue;
+	// 	line = clean_config_line(buffer);
+	// 	defn = strtok(line, "=");
+	// 	value = strtok(NULL, "=");
+	// 	insert_value(&minhashtable, defn, value);
 	// }
+	// printf("Port value: %s\n", get_value(minhashtable, "port"));
+	// printf("Document Root value: %s\n", get_value(minhashtable, "document_root"));
+	// printf("Log Root value: %s\n", get_value(minhashtable, "log_root"));
+	// destroy_table(minhashtable);
+	// exit(0);
+
+	if (conf_f) {
+		fscanf(conf_f, "%s%s", defn, value);
+		strncpy(_port, value, PORT_LEN);
+		printf("This is defn: %s\n", defn);
+		printf("This is port: %s\n", _port);
+		fscanf(conf_f, "%s%s", defn, value);
+		strncpy(_doc_root, value, PATH_MAX);
+		printf("This is defn: %s\n", defn);
+		printf("This is _doc_root: %s\n", value);
+		fscanf(conf_f, "%s%s", defn, value);
+		strncpy(_log_root, value, PATH_MAX);
+		printf("This is defn: %s\n", defn);
+		printf("This is _log_root: %s\n", value);
+		fclose(conf_f);
+	} else {
+		fprintf(stderr, RED "%s" RESET, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 }
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
@@ -283,7 +301,7 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqlines[0], reqlines[1]);
 		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
-		send_file(client_fd, "http-code-responses/400.html");
+		send_file(client_fd, "partials/code-responses/400.html");
 		return;
 	}
 
@@ -291,7 +309,7 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 		if (verbose_flag)
 			printf("GET %s %s [505 Http Version Not Supported]\n", reqlines[1], reqlines[2]);
 		send(client_fd, NOT_SUPPORTED, CODE_505_LEN, 0);
-		send_file(client_fd, "http-code-responses/505.html");
+		send_file(client_fd, "partials/code-responses/505.html");
 		return;
 	}
 
@@ -299,7 +317,7 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 		if (verbose_flag)
 			printf("%s %s [501 Not Implemented]\n", reqlines[0], reqlines[1]);
 		send(client_fd, NOT_IMPLEMENTED, CODE_501_LEN, 0);
-		send_file(client_fd, "http-code-responses/501.html");
+		send_file(client_fd, "partials/code-responses/501.html");
 		return;
 	}
 
@@ -309,7 +327,7 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 		close(fd);
 
 		if (verbose_flag)
-			printf("GET %s [200 OK]\n", reqlines[1]);
+			printf(GREEN "GET %s [200 OK]\n" RESET, reqlines[1]);
 		send(client_fd, OK, CODE_200_LEN, 0);
 		const String extension = strrchr(path, '.');
 
@@ -322,19 +340,19 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 		if (verbose_flag)
 			printf("GET %s [404 Not Found]\n", reqlines[1]);
 		send(client_fd, NOT_FOUND, CODE_404_LEN, 0);
-		send_file(client_fd, "http-code-responses/404.html");
+		send_file(client_fd, "partials/code-responses/404.html");
 	}
 	else if (errno == EACCES) {
 		if (verbose_flag)
-			printf("GET %s [403 Access Denied]\n", reqlines[1]);
+			printf(YELLOW "GET %s [403 Access Denied]\n" RESET, reqlines[1]);
 		send(client_fd, FORBIDDEN, CODE_403_LEN, 0);
-		send_file(client_fd, "http-code-responses/403.html");
+		send_file(client_fd, "partials/code-responses/403.html");
 	}
 	else {
 		if (verbose_flag)
-			printf("GET %s [500 Internal Server Error]\n", reqlines[1]);
+			printf(RED "GET %s [500 Internal Server Error]\n" RESET, reqlines[1]);
 		send(client_fd, SERVER_ERROR, CODE_500_LEN, 0);
-		send_file(client_fd, "http-code-responses/500.html");
+		send_file(client_fd, "partials/code-responses/500.html");
 	}
 	close(fd);
 }
@@ -457,11 +475,11 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		snprintf(cust_msg, 29 + INET_ADDRSTRLEN, "Connection from %s; BAD REQUEST", ipv4_address);
 		server_log(cust_msg);
 		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
-		send_file(fd, "http-code-responses/400.html");
+		send_file(fd, "partials/code-responses/400.html");
 	} else {
 		determine_root(reqlines);
 		strncat(_doc_root, reqlines[1], PATH_MAX);
-		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, MSG_TEMPLATE, ipv4_address, reqlines[1]);
+		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv4_address, reqlines[1]);
 		server_log(cust_msg);
 		respond(fd, reqlines, _doc_root);
 	}
@@ -482,7 +500,7 @@ int main(const int argc, String *const argv) {
 	}
 	compute_flags(argc, argv, &verbose_flag);
 	if (!is_valid_port()) {
-		fprintf(stderr, "Error: Invalid port %s\n", _port);
+		fprintf(stderr, RED "Error: Invalid port %s\n" RESET, _port);
 		exit(EXIT_FAILURE);
 	}
 
@@ -509,7 +527,7 @@ int main(const int argc, String *const argv) {
 	}
 
 	if (verbose_flag)
-		printf("Initialization: SUCCESS; Listening on port %s, root is %s\n", _port, _doc_root);
+		printf(GREEN "Initialization: SUCCESS; Listening on port %s, root is %s\n" RESET, _port, _doc_root);
 
 	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 
