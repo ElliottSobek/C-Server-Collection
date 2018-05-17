@@ -15,21 +15,10 @@
 #include <sys/socket.h>
 #include <linux/limits.h>
 
-#include "types.h"
+#include "lib/types/types.h"
+#include "lib/colors/colors.h"
 // #include "libraries/hashtable/hashtable.h"
-#include "libraries/minhashtable/minhashtable.h"
-
-// Put in own file/lib
-#define BLACK "\033[0;30m"
-#define RED "\033[0;31m"
-#define GREEN "\033[0;32m"
-#define YELLOW "\033[0;33m"
-#define BLUE "\033[0;34m"
-#define MAGENTA "\033[0;35m"
-#define CYAN "\033[0;36m"
-#define WHITE "\033[0;37m"
-#define RESET "\033[0;0m"
-// End put in lib
+// #include "lib/minhashtable/minhashtable.h"
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
