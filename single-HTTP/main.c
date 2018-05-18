@@ -182,7 +182,7 @@ void load_configuration(const String const path) { // Needs logic improvement
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	int c;
 
-	while ((c = getopt(argc, argv, "hVvs:")) != -1) {
+	while ((c = getopt(argc, argv, ":hVvs:")) != -1) {
 		switch (c) {
 		case 'h':
 			printf(USAGE_MSG
@@ -200,7 +200,8 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 		case 's':
 			load_configuration(optarg);
 			break;
-		case '?':
+		default:
+			fprintf(stderr, RED "Unrecognized option: -%c\n" RESET, optopt);
 			exit(EXIT_FAILURE);
 		}
 	}
