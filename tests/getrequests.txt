@@ -1,4 +1,4 @@
-GET / HTTP/1.1
+ET / HTTP/1.1
 GET /index.html HTTP/1.1
 GET /constact-us.html HTTP/1.1
 GET /login.php HTTP/1.1
