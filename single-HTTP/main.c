@@ -174,7 +174,7 @@ void load_configuration(const String const path) { // Needs logic improvement
 		printf("This is _log_root: %s\n", value);
 		fclose(conf_f);
 	} else {
-		fprintf(stderr, RED "%s" RESET, strerror(errno));
+		fprintf(stderr, RED "%s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
@@ -235,7 +235,7 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 
 	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
 	if (fd == -1)
-		perror(strerror(errno));
+		fprintf(stderr, RED "%s\n" RESET, strerror(errno));
 	else
 		dprintf(fd, "[%s]: %s\n", f_time, msg);
 
@@ -412,17 +412,17 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 		*socketfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
 
 		if (*socketfd == -1) {
-			perror(strerror(errno));
+			fprintf(stderr, YELLOW "%s\n" RESET, strerror(errno));
 			continue;
 		}
 
 		if (setsockopt(*socketfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-			perror(strerror(errno));
+			fprintf(stderr, RED "%s\n" RESET, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
 		if (bind(*socketfd, p->ai_addr, p->ai_addrlen) == -1) {
-			perror(strerror(errno));
+			fprintf(stderr, YELLOW "%s\n" RESET, strerror(errno));
 			close(*socketfd);
 			continue;
 		}
@@ -452,7 +452,7 @@ void init_signals(void) { // Done
 	new_action_int.sa_flags = 0;
 
 	if (sigaction(SIGINT, &new_action_int, NULL) == -1) {
-		perror(strerror(errno));
+		fprintf(stderr, RED "%s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
@@ -497,7 +497,7 @@ int main(const int argc, String *const argv) {
 	init_addrinfo(&addressinfo);
 
 	if (getaddrinfo(NULL, _port, &addressinfo, &serviceinfo) != 0) {
-		perror(gai_strerror(errno));
+		fprintf(stderr, RED "%s\n" RESET, gai_strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -505,7 +505,7 @@ int main(const int argc, String *const argv) {
 		exit(EXIT_FAILURE);
 
 	if (listen(masterfd, BACKLOG) == -1) {
-		perror(strerror(errno));
+		fprintf(stderr, RED "%s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
