@@ -18,7 +18,7 @@
 #include "lib/types/types.h"
 #include "lib/colors/colors.h"
 // #include "libraries/hashtable/hashtable.h"
-// #include "lib/minhashtable/minhashtable.h"
+#include "lib/minhashtable/minhashtable.h"
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
