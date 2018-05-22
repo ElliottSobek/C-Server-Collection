@@ -3,12 +3,14 @@ SHELL := /bin/bash
 CC := gcc
 
 CFLAGS := -Wall -Wextra -pedantic -Wno-unused-parameter \
-		 -Wno-unused-but-set-parameter -Werror -std=c99 \
-		 -D_POSIX_C_SOURCE=200809L
+		  -Wno-unused-but-set-parameter -Werror -std=c99 \
+		  -D_POSIX_C_SOURCE=200809L
 
-VPATH := lib/minhashtable
+SUBDIRS := lib
 
 OBJECTS := main.o minhashtable.o
+
+VPATH := $(shell echo `./getpaths.bash $(SUBDIRS)`)
 
 .PHONY: debug profile production clean
 
