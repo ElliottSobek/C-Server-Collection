@@ -27,6 +27,8 @@
 *.i*86
 *.x86_64
 *.hex
+single-HTTP/single-HTTP-debug
+single-HTTP/single-HTTP-profile
 single-HTTP/single-HTTP
 
 # Debug files
