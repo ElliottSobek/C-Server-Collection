@@ -2,7 +2,7 @@
 
 singleConnectionTest() {
 	if [ $# -ne 2 ]; then
-		echo "Usage: . singleConnectionTest <dir_name> <integer>"
+		echo "Usage:" `basename "$0"` "<dir_name> <integer>"
 		exit 1
 	fi
 	local cdw=$PWD
