@@ -17,8 +17,7 @@
 
 #include "lib/types/types.h"
 #include "lib/colors/colors.h"
-// #include "libraries/hashtable/hashtable.h"
-#include "lib/minhashtable/minhashtable.h"
+#include "lib/hashtable/hashtable.h"
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
@@ -130,8 +129,7 @@ String clean_config_line(String string) { // Done
 	return string;
 }
 
-// Make hash table and readline, strtok, and hash to set all variables
-void load_configuration(const String const path) { // Needs logic improvement
+void load_configuration(const String const path) {
 	const String extension = strrchr(path, '.');
 
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
@@ -139,44 +137,31 @@ void load_configuration(const String const path) { // Needs logic improvement
 		exit(EXIT_FAILURE);
 	}
 
-	// char buffer[KBYTE_S] = "";
-	// String line = "", defn = "", value = "";
-	char defn[128], value[128];
+	char buffer[KBYTE_S] = "";
+	String line = "", defn = "", value = "";
 	FILE *conf_f = fopen(path, "r");
-	// MinHashTable minhashtable = create_ht();
-
-	// while (fgets(buffer, KBYTE_S, conf_f)) {
-	// 	if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\t')
-	// 		continue;
-	// 	line = clean_config_line(buffer);
-	// 	defn = strtok(line, "=");
-	// 	value = strtok(NULL, "=");
-	// 	insert_value(&minhashtable, defn, value);
-	// }
-	// printf("Port value: %s\n", get_value(minhashtable, "port"));
-	// printf("Document Root value: %s\n", get_value(minhashtable, "document_root"));
-	// printf("Log Root value: %s\n", get_value(minhashtable, "log_root"));
-	// destroy_table(minhashtable);
-	// exit(0);
 
 	if (conf_f) {
-		fscanf(conf_f, "%s%s", defn, value);
-		strncpy(_port, value, PORT_LEN);
-		printf("This is defn: %s\n", defn);
-		printf("This is port: %s\n", _port);
-		fscanf(conf_f, "%s%s", defn, value);
-		strncpy(_doc_root, value, PATH_MAX);
-		printf("This is defn: %s\n", defn);
-		printf("This is _doc_root: %s\n", value);
-		fscanf(conf_f, "%s%s", defn, value);
-		strncpy(_log_root, value, PATH_MAX);
-		printf("This is defn: %s\n", defn);
-		printf("This is _log_root: %s\n", value);
-		fclose(conf_f);
+		HashTable hashtable = create_ht(10);
+
+		while (fgets(buffer, KBYTE_S, conf_f)) {
+			if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\t')
+				continue;
+			line = clean_config_line(buffer);
+			defn = strtok(line, "=");
+			value = strtok(NULL, "=");
+
+			insert_set(&hashtable, defn, value);
+		}
+		strncpy(_port, get_value(hashtable, "port"), PORT_LEN);
+		strncpy(_doc_root, get_value(hashtable, "document_root"), PATH_MAX);
+		strncpy(_log_root, get_value(hashtable, "log_root"), PATH_MAX);
+		destroy_table(hashtable);
 	} else {
 		fprintf(stderr, RED "%s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	fclose(conf_f);
 }
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
