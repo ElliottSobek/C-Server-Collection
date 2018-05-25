@@ -8,20 +8,20 @@ CFLAGS := -Wall -Wextra -pedantic -Wno-unused-parameter \
 
 SUBDIRS := lib
 
-OBJECTS := main.o minhashtable.o
+OBJECTS := main.o hashtable.o
 
 VPATH := $(shell echo `./getpaths.bash $(SUBDIRS)`)
 
 .PHONY: debug profile production clean
 
 debug: $(OBJECTS)
-	$(CC) $(CFLAGS) -g $< -o single-HTTP-debug
+	$(CC) $(CFLAGS) -g $^ -o single-HTTP-debug
 
 profile: $(OBJECTS)
-	$(CC) $(CFLAGS) -pg $< -o single-HTTP-profile
+	$(CC) $(CFLAGS) -pg $^ -o single-HTTP-profile
 
 production: $(OBJECTS)
-	$(CC) $(CFLAGS) -O3 $< -o single-HTTP
+	$(CC) $(CFLAGS) -O3 $^ -o single-HTTP
 
 $(OBJECTS):
 
