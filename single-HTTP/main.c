@@ -31,9 +31,10 @@
 #define DEFAULT_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/"
 #define DEFAULT_LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
 
+#define DEFAULT_HT_S 10
 #define DEFAULT_PORT "8888"
 #define CONNECTION_TEMPLATE "Connection from %s for file %s"
-#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-s <configuration file>]\n"
+#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -129,20 +130,26 @@ String clean_config_line(String string) { // Done
 	return string;
 }
 
-void load_configuration(const String const path) {
+void load_configuration(const String const path) { // Done
 	const String extension = strrchr(path, '.');
 
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
-		fprintf(stderr, RED "-s option takes a configuration file as an argument; example.conf\n" RESET);
-		exit(EXIT_FAILURE);
+		if (verbose_flag)
+			fprintf(stderr, YELLOW "File Warning: -s option takes a configuration file as an argument\n"
+			        "Using default parameter values\n" RESET);
+		return;
 	}
 
 	char buffer[KBYTE_S] = "";
 	String line = "", defn = "", value = "";
 	FILE *conf_f = fopen(path, "r");
 
-	if (conf_f) {
-		HashTable hashtable = create_ht(10);
+	if (!conf_f) {
+		if (verbose_flag)
+			fprintf(stderr, YELLOW "File Error: %s\nUsing default parameter values\n" RESET, strerror(errno));
+	}
+	else {
+		HashTable hashtable = create_ht(DEFAULT_HT_S);
 
 		while (fgets(buffer, KBYTE_S, conf_f)) {
 			if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\t')
@@ -157,36 +164,50 @@ void load_configuration(const String const path) {
 		strncpy(_doc_root, get_value(hashtable, "document_root"), PATH_MAX);
 		strncpy(_log_root, get_value(hashtable, "log_root"), PATH_MAX);
 		destroy_table(hashtable);
-	} else {
-		fprintf(stderr, RED "%s\n" RESET, strerror(errno));
-		exit(EXIT_FAILURE);
 	}
 	fclose(conf_f);
 }
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	int c;
+	uid_t euid;
+	gid_t egid;
 
-	while ((c = getopt(argc, argv, ":hVvs:")) != -1) {
+	while ((c = getopt(argc, argv, ":hVvs:g:u:")) != -1) {
 		switch (c) {
 		case 'h':
 			printf(USAGE_MSG
 				   "-h\tHelp menu\n"
 				   "-V\tVersion\n"
 				   "-v\tVerbose\n"
-				   "-s\tLoad a configuration file\n", basename(argv[0]));
+				   "-s\tLoad a configuration file\n"
+				   "-u\tSet the effective user id for the process\n"
+				   "-g\tSet the effective group if for the process\n", basename(argv[0]));
 			exit(EXIT_SUCCESS);
 		case 'V':
 			printf("Version 0.1\n");
 			exit(EXIT_SUCCESS);
 		case 'v':
 			*v_flag = true;
+
 			break;
 		case 's':
 			load_configuration(optarg);
 			break;
+		case 'u':
+			euid = atoi(optarg);
+
+			if (seteuid(euid) == -1)
+				fprintf(stderr, YELLOW "EUID Error: %s\n" RESET, strerror(errno));
+			break;
+		case 'g':
+			egid = atoi(optarg);
+
+			if (setegid(egid) == -1)
+				fprintf(stderr, YELLOW "EGID Error: %s\n" RESET, strerror(errno));
+			break;
 		default:
-			fprintf(stderr, RED "Unrecognized option: -%c\n" RESET, optopt);
+			fprintf(stderr, RED "Option Error: Unrecognized option: -%c\n" RESET, optopt);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -201,7 +222,7 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 	const struct tm *const t_data = localtime(&cur_time);
 
 	if (!log_dir || !f_time) {
-		server_log(strerror(errno));
+		fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -219,8 +240,11 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 	snprintf(log_dir, PATH_MAX, "%s%s", _log_root, ff_time_path);
 
 	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
-	if (fd == -1)
-		fprintf(stderr, RED "%s\n" RESET, strerror(errno));
+
+	if (fd == -1) {
+		if (verbose_flag)
+			fprintf(stderr, YELLOW "File Error: %s\n" RESET, strerror(errno));
+	}
 	else
 		dprintf(fd, "[%s]: %s\n", f_time, msg);
 
@@ -235,8 +259,13 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 void process_php(const int client_fd, const String const file_path) { // Thread?
 	const pid_t c_pid = fork();
 
-	if (c_pid == -1)
-		server_log(strerror(errno));
+	if (c_pid == -1) {
+		const String const err_msg = strerror(errno);
+
+		if (verbose_flag)
+			fprintf(stderr, YELLOW "%s\n" RESET, err_msg);
+		server_log(err_msg);
+	}
 
 	if (c_pid == 0) {
 		dup2(client_fd, STDOUT_FILENO);
@@ -248,11 +277,17 @@ void process_php(const int client_fd, const String const file_path) { // Thread?
 void send_file(const int client_fd, const String const path) { // Done
 	const int fd = open(path, O_RDONLY);
 
-	if (fd > -1) {
+	if (fd == -1) {
+		const String const err_msg = strerror(errno);
+
+		if (verbose_flag)
+			fprintf(stderr, YELLOW "File Error: %s\n" RESET, err_msg);
+		server_log(err_msg);
+	} else {
 		String f_contents = (String) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
 
 		if (!f_contents) {
-			server_log(strerror(errno));
+			fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
@@ -271,7 +306,7 @@ void send_file(const int client_fd, const String const path) { // Done
 	close(client_fd);
 }
 
-void respond(const int client_fd, String *const reqlines, const String const path) { // Add codes 501
+void respond(const int client_fd, String *const reqlines, const String const path) { // Done
 	if (!is_valid_request(reqlines)) {
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqlines[0], reqlines[1]);
@@ -336,14 +371,14 @@ String *get_req_lines(String msg) { // Done
 	String *const reqline = (String*) malloc(REQLINE_TOKEN_AMT * sizeof(String));
 
 	if (!reqline) {
-		server_log(strerror(errno));
+		fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
 		reqline[i] = (String) calloc(REQLINE_LEN + NT_LEN, sizeof(char));
 		if (!reqline[i]) {
-			server_log(strerror(errno));
+			fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -397,17 +432,19 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 		*socketfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
 
 		if (*socketfd == -1) {
-			fprintf(stderr, YELLOW "%s\n" RESET, strerror(errno));
+			if (verbose_flag)
+				fprintf(stderr, YELLOW "Socket Error: %s\n" RESET, strerror(errno));
 			continue;
 		}
 
 		if (setsockopt(*socketfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-			fprintf(stderr, RED "%s\n" RESET, strerror(errno));
+			fprintf(stderr, RED "Setsocket Error: %s\n" RESET, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 
 		if (bind(*socketfd, p->ai_addr, p->ai_addrlen) == -1) {
-			fprintf(stderr, YELLOW "%s\n" RESET, strerror(errno));
+			if (verbose_flag)
+				fprintf(stderr, YELLOW "Bind Error: %s\n" RESET, strerror(errno));
 			close(*socketfd);
 			continue;
 		}
@@ -437,7 +474,7 @@ void init_signals(void) { // Done
 	new_action_int.sa_flags = 0;
 
 	if (sigaction(SIGINT, &new_action_int, NULL) == -1) {
-		fprintf(stderr, RED "%s\n" RESET, strerror(errno));
+		fprintf(stderr, RED "Sigal Error: %s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
@@ -448,6 +485,9 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 
 	if (!reqlines) {
 		snprintf(cust_msg, 29 + INET_ADDRSTRLEN, "Connection from %s; BAD REQUEST", ipv4_address);
+
+		if (verbose_flag)
+			fprintf(stderr, YELLOW "%s\n" RESET, cust_msg);
 		server_log(cust_msg);
 		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
 		send_file(fd, "partials/code-responses/400.html");
@@ -455,6 +495,9 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		determine_root(reqlines);
 		strncat(_doc_root, reqlines[1], PATH_MAX);
 		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv4_address, reqlines[1]);
+
+		if (verbose_flag)
+			fprintf(stderr, "%s\n", cust_msg);
 		server_log(cust_msg);
 		respond(fd, reqlines, _doc_root);
 	}
@@ -475,7 +518,7 @@ int main(const int argc, String *const argv) {
 	}
 	compute_flags(argc, argv, &verbose_flag);
 	if (!is_valid_port()) {
-		fprintf(stderr, RED "Error: Invalid port %s\n" RESET, _port);
+		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
 		exit(EXIT_FAILURE);
 	}
 
@@ -490,14 +533,14 @@ int main(const int argc, String *const argv) {
 		exit(EXIT_FAILURE);
 
 	if (listen(masterfd, BACKLOG) == -1) {
-		fprintf(stderr, RED "%s\n" RESET, strerror(errno));
+		fprintf(stderr, RED "Listen Error: %s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
 	String msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
 	if (!msg) {
-		server_log(strerror(errno));
+		fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -511,7 +554,11 @@ int main(const int argc, String *const argv) {
 		newfd = accept(masterfd, &client_addr, &sin_size);
 
 		if (newfd == -1) {
-			server_log(strerror(errno));
+			const String const err_msg = strerror(errno);
+
+			if (verbose_flag)
+				fprintf(stderr, YELLOW "%s\n" RESET, err_msg);
+			server_log(err_msg);
 			continue;
 		}
 
@@ -519,8 +566,13 @@ int main(const int argc, String *const argv) {
 
 		if (recv(newfd, msg, MSG_LEN, 0) > 0)
 			process_request(newfd, msg, ipv4_address);
-		else
-			server_log(strerror(errno));
+		else {
+			const String const err_msg = strerror(errno);
+
+			if (verbose_flag)
+				fprintf(stderr, YELLOW "%s\n" RESET, err_msg);
+			server_log(err_msg);
+		}
 	}
 	free(msg);
 	msg = NULL;
