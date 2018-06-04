@@ -110,15 +110,10 @@ bool is_valid_request(String *const reqline) { // Done
 void determine_root(String *const reqlines) { // Done
 	String const path = reqlines[1];
 
-	printf("This is reqlines 1 in determine root: %s\n", path);
-
-
 	if (strncmp(path, "/\0", MDEFAULT_PAGE_LEN) == 0)
-		strncpy(path, "static/html/index.html", DEFAULT_PAGE_LEN); // Prob here with adding static in front
-	else {
-		memmove(path, path + 1, strnlen(path, PATH_MAX)); // Prob here?
-		printf("This is path after memmove in determine root: %s\n", path);
-	}
+		strncpy(path, "static/html/index.html", DEFAULT_PAGE_LEN);
+	else
+		memmove(path, path + 1, strnlen(path, PATH_MAX));
 }
 
 String clean_config_line(String string) { // Done
@@ -170,10 +165,9 @@ void load_configuration(const String const path) { // Done
 		strncpy(_log_root, get_value(hashtable, "log_root"), PATH_MAX);
 		destroy_table(hashtable);
 	}
-	if (fclose(conf_f) != 0) {
+	if (fclose(conf_f) != 0)
 		if (verbose_flag)
 			printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
-	}
 }
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
@@ -256,10 +250,10 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 	else
 		dprintf(fd, "[%s]: %s\n", f_time, msg);
 
-	if (close(fd) == -1) {
+	if (close(fd) == -1)
 		if (verbose_flag)
 			printf(YELLOW "Loggind File Descriptor Error: %s\n" RESET, strerror(errno));
-	}
+
 	free(f_time);
 	f_time = NULL;
 
@@ -282,10 +276,9 @@ void process_php(const int client_fd, const String const file_path) { // Thread?
 		dup2(client_fd, STDOUT_FILENO);
 		execl("/usr/bin/php", "php", file_path, (String) NULL);
 	}
-	if (close(client_fd) == -1) {
+	if (close(client_fd) == -1)
 		if (verbose_flag)
 			printf(YELLOW "File Descriptor Error 3: %s\n" RESET, strerror(errno));
-	}
 }
 
 void send_file(const int client_fd, const String const path) { // Done
@@ -316,14 +309,13 @@ void send_file(const int client_fd, const String const path) { // Done
 		f_contents = NULL;
 	}
 
-	if (close(fd) == -1) {
+	if (close(fd) == -1)
 		if (verbose_flag)
 			printf(YELLOW "Copy File Descriptor Error: %s\n" RESET, strerror(errno));
-	}
-	if (close(client_fd) == -1) {
+
+	if (close(client_fd) == -1)
 		if (verbose_flag)
 			printf(YELLOW "Serve File Descriptor Error: %s\n" RESET, strerror(errno));
-	}
 }
 
 void respond(const int client_fd, String *const reqlines, const String const path) { // Done
@@ -354,10 +346,9 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 	const int fd = open(path, O_RDONLY);
 
 	if (fd != -1) {
-		if (close(fd) == -1) {
+		if (close(fd) == -1)
 			if (verbose_flag)
 				printf(YELLOW "File Descriptor Error 1: %s\n" RESET, strerror(errno));
-		}
 
 		if (verbose_flag)
 			printf(GREEN "GET %s [200 OK]\n" RESET, reqlines[1]);
@@ -391,7 +382,6 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 
 String *get_req_lines(String msg) { // Done
 	String *const reqline = (String*) malloc(REQLINE_TOKEN_AMT * sizeof(String));
-	printf("This is msg in get_req_lines: %s\n", msg);
 
 	if (!reqline) {
 		fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
@@ -400,6 +390,7 @@ String *get_req_lines(String msg) { // Done
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
 		reqline[i] = (String) calloc(REQLINE_LEN + NT_LEN, sizeof(char));
+
 		if (!reqline[i]) {
 			fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
 			exit(EXIT_FAILURE);
@@ -413,20 +404,17 @@ String *get_req_lines(String msg) { // Done
 
 	strncpy(reqline[0], tok, (strnlen(tok, STR_MAX) + NT_LEN));
 	tok = strtok(NULL, " \t");
-	printf("This is reqline 0 in get_req_lines: %s\n", reqline[0]);
 
 	if (!tok)
 		return NULL;
 
 	strncpy(reqline[1], tok, (strnlen(tok, STR_MAX) + NT_LEN));
 	tok = strtok(NULL, " \t\n");
-	printf("This is reqline 1 in get_req_lines: %s\n", reqline[1]);
 
 	if (!tok)
 		return NULL;
 
 	strncpy(reqline[2], tok, (strnlen(tok, STR_MAX) + NT_LEN));
-	printf("This is reqline 2 in get_req_lines: %s\n", reqline[2]);
 	return reqline;
 }
 
@@ -518,8 +506,6 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		send_file(fd, "partials/code-responses/400.html");
 	} else {
 		determine_root(reqlines);
-		printf("This is _doc_root in process_request: %s\n", _doc_root);
-		printf("This is reqlines[1] in process_request: %s\n", reqlines[1]);
 		strncat(_doc_root, reqlines[1], PATH_MAX);
 		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv4_address, reqlines[1]);
 
@@ -594,10 +580,8 @@ int main(const int argc, String *const argv) {
 
 		inet_ntop(AF_INET, &(((struct sockaddr_in*)&client_addr)->sin_addr), ipv4_address, INET_ADDRSTRLEN);
 
-		if (recv(newfd, msg, MSG_LEN, 0) > 0) {
-			printf("This is msg in main: %s\n", msg);
+		if (recv(newfd, msg, MSG_LEN, 0) > 0)
 			process_request(newfd, msg, ipv4_address);
-		}
 		else {
 			const String const err_msg = strerror(errno);
 
@@ -606,10 +590,9 @@ int main(const int argc, String *const argv) {
 			server_log(err_msg);
 		}
 	}
-	if (close(masterfd) == -1) {
+	if (close(masterfd) == -1)
 		if (verbose_flag)
 			printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
-	}
 	free(msg);
 	msg = NULL;
 
