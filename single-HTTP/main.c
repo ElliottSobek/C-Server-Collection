@@ -63,7 +63,7 @@
 #define	CODE_501_LEN 30
 #define CODE_505_LEN 41
 #define MSG_TEMP_LEN 41
-#define DEFAULT_PAGE_LEN 10
+#define DEFAULT_PAGE_LEN 22
 #define MDEFAULT_PAGE_LEN 2
 #define FF_TIME_PATH_MLEN 19
 
@@ -111,7 +111,7 @@ void determine_root(String *const reqlines) { // Done
 	String const path = reqlines[1];
 
 	if (strncmp(path, "/\0", MDEFAULT_PAGE_LEN) == 0)
-		strncpy(path, "index.html", DEFAULT_PAGE_LEN);
+		strncpy(path, "static/html/index.html", DEFAULT_PAGE_LEN);
 	else
 		memmove(path, path + 1, strnlen(path, PATH_MAX));
 }
@@ -135,8 +135,8 @@ void load_configuration(const String const path) { // Done
 
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
 		if (verbose_flag)
-			fprintf(stderr, YELLOW "File Warning: -s option takes a configuration file as an argument\n"
-			        "Using default parameter values\n" RESET);
+			printf(YELLOW "File Warning: -s option takes a configuration file as an argument\n"
+			       "Using default parameter values\n" RESET);
 		return;
 	}
 
@@ -146,7 +146,7 @@ void load_configuration(const String const path) { // Done
 
 	if (!conf_f) {
 		if (verbose_flag)
-			fprintf(stderr, YELLOW "File Error: %s\nUsing default parameter values\n" RESET, strerror(errno));
+			printf(YELLOW "File Error: %s\nUsing default parameter values\n" RESET, strerror(errno));
 	}
 	else {
 		HashTable hashtable = create_ht(DEFAULT_HT_S);
@@ -165,7 +165,9 @@ void load_configuration(const String const path) { // Done
 		strncpy(_log_root, get_value(hashtable, "log_root"), PATH_MAX);
 		destroy_table(hashtable);
 	}
-	fclose(conf_f);
+	if (fclose(conf_f) != 0)
+		if (verbose_flag)
+			printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
@@ -185,7 +187,7 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 				   "-g\tSet the effective group if for the process\n", basename(argv[0]));
 			exit(EXIT_SUCCESS);
 		case 'V':
-			printf("Version 0.1\n");
+			printf("Version 0.5\n");
 			exit(EXIT_SUCCESS);
 		case 'v':
 			*v_flag = true;
@@ -198,16 +200,16 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 			euid = atoi(optarg);
 
 			if (seteuid(euid) == -1)
-				fprintf(stderr, YELLOW "EUID Error: %s\n" RESET, strerror(errno));
+				printf(YELLOW "EUID Error: %s\n" RESET, strerror(errno));
 			break;
 		case 'g':
 			egid = atoi(optarg);
 
 			if (setegid(egid) == -1)
-				fprintf(stderr, YELLOW "EGID Error: %s\n" RESET, strerror(errno));
+				printf(YELLOW "EGID Error: %s\n" RESET, strerror(errno));
 			break;
 		default:
-			fprintf(stderr, RED "Option Error: Unrecognized option: -%c\n" RESET, optopt);
+			fprintf(stderr, RED "Getopt Option Error: Unrecognized option: -%c\n" RESET, optopt);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -243,12 +245,15 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 
 	if (fd == -1) {
 		if (verbose_flag)
-			fprintf(stderr, YELLOW "File Error: %s\n" RESET, strerror(errno));
+			printf(YELLOW "Logging File Error: %s\n" RESET, strerror(errno));
 	}
 	else
 		dprintf(fd, "[%s]: %s\n", f_time, msg);
 
-	close(fd);
+	if (close(fd) == -1)
+		if (verbose_flag)
+			printf(YELLOW "Loggind File Descriptor Error: %s\n" RESET, strerror(errno));
+
 	free(f_time);
 	f_time = NULL;
 
@@ -263,7 +268,7 @@ void process_php(const int client_fd, const String const file_path) { // Thread?
 		const String const err_msg = strerror(errno);
 
 		if (verbose_flag)
-			fprintf(stderr, YELLOW "%s\n" RESET, err_msg);
+			printf(YELLOW "Process Forking Error: %s\n" RESET, err_msg);
 		server_log(err_msg);
 	}
 
@@ -271,7 +276,9 @@ void process_php(const int client_fd, const String const file_path) { // Thread?
 		dup2(client_fd, STDOUT_FILENO);
 		execl("/usr/bin/php", "php", file_path, (String) NULL);
 	}
-	close(client_fd);
+	if (close(client_fd) == -1)
+		if (verbose_flag)
+			printf(YELLOW "File Descriptor Error 3: %s\n" RESET, strerror(errno));
 }
 
 void send_file(const int client_fd, const String const path) { // Done
@@ -281,7 +288,7 @@ void send_file(const int client_fd, const String const path) { // Done
 		const String const err_msg = strerror(errno);
 
 		if (verbose_flag)
-			fprintf(stderr, YELLOW "File Error: %s\n" RESET, err_msg);
+			printf(YELLOW "Serve File Error: %s\n" RESET, err_msg);
 		server_log(err_msg);
 	} else {
 		String f_contents = (String) malloc((PACKET_MAX + NT_LEN) * sizeof(char));
@@ -302,8 +309,13 @@ void send_file(const int client_fd, const String const path) { // Done
 		f_contents = NULL;
 	}
 
-	close(fd);
-	close(client_fd);
+	if (close(fd) == -1)
+		if (verbose_flag)
+			printf(YELLOW "Copy File Descriptor Error: %s\n" RESET, strerror(errno));
+
+	if (close(client_fd) == -1)
+		if (verbose_flag)
+			printf(YELLOW "Serve File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
 void respond(const int client_fd, String *const reqlines, const String const path) { // Done
@@ -333,8 +345,10 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 
 	const int fd = open(path, O_RDONLY);
 
-	if (fd > -1) {
-		close(fd);
+	if (fd != -1) {
+		if (close(fd) == -1)
+			if (verbose_flag)
+				printf(YELLOW "File Descriptor Error 1: %s\n" RESET, strerror(errno));
 
 		if (verbose_flag)
 			printf(GREEN "GET %s [200 OK]\n" RESET, reqlines[1]);
@@ -364,7 +378,6 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 		send(client_fd, SERVER_ERROR, CODE_500_LEN, 0);
 		send_file(client_fd, "partials/code-responses/500.html");
 	}
-	close(fd);
 }
 
 String *get_req_lines(String msg) { // Done
@@ -377,6 +390,7 @@ String *get_req_lines(String msg) { // Done
 
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
 		reqline[i] = (String) calloc(REQLINE_LEN + NT_LEN, sizeof(char));
+
 		if (!reqline[i]) {
 			fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
 			exit(EXIT_FAILURE);
@@ -433,7 +447,7 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 
 		if (*socketfd == -1) {
 			if (verbose_flag)
-				fprintf(stderr, YELLOW "Socket Error: %s\n" RESET, strerror(errno));
+				printf(YELLOW "Socket Init Error: %s\n" RESET, strerror(errno));
 			continue;
 		}
 
@@ -444,8 +458,7 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 
 		if (bind(*socketfd, p->ai_addr, p->ai_addrlen) == -1) {
 			if (verbose_flag)
-				fprintf(stderr, YELLOW "Bind Error: %s\n" RESET, strerror(errno));
-			close(*socketfd);
+				printf(YELLOW "Bind Error: %s\n" RESET, strerror(errno));
 			continue;
 		}
 
@@ -487,7 +500,7 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		snprintf(cust_msg, 29 + INET_ADDRSTRLEN, "Connection from %s; BAD REQUEST", ipv4_address);
 
 		if (verbose_flag)
-			fprintf(stderr, YELLOW "%s\n" RESET, cust_msg);
+			printf(YELLOW "%s\n" RESET, cust_msg);
 		server_log(cust_msg);
 		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
 		send_file(fd, "partials/code-responses/400.html");
@@ -497,7 +510,7 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv4_address, reqlines[1]);
 
 		if (verbose_flag)
-			fprintf(stderr, "%s\n", cust_msg);
+			printf("%s\n", cust_msg);
 		server_log(cust_msg);
 		respond(fd, reqlines, _doc_root);
 	}
@@ -513,7 +526,7 @@ int main(const int argc, String *const argv) {
 
 	init_signals();
 	if (argc > MAX_ARGS) {
-		fprintf(stderr, USAGE_MSG, basename(argv[0]));
+		printf(USAGE_MSG, basename(argv[0]));
 		exit(EXIT_FAILURE);
 	}
 	compute_flags(argc, argv, &verbose_flag);
@@ -525,7 +538,7 @@ int main(const int argc, String *const argv) {
 	init_addrinfo(&addressinfo);
 
 	if (getaddrinfo(NULL, _port, &addressinfo, &serviceinfo) != 0) {
-		fprintf(stderr, RED "%s\n" RESET, gai_strerror(errno));
+		fprintf(stderr, RED "Get Address Info Error: %s\n" RESET, gai_strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -545,7 +558,10 @@ int main(const int argc, String *const argv) {
 	}
 
 	if (verbose_flag)
-		printf(GREEN "Initialization: SUCCESS; Listening on port %s, root is %s\n" RESET, _port, _doc_root);
+		printf(GREEN "Initialization: SUCCESS;\n"
+		       "Listening on port: %s\n"
+		       "root is: %s\n"
+		       "log root is: %s\n" RESET, _port, _doc_root, _log_root);
 
 	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 
@@ -557,7 +573,7 @@ int main(const int argc, String *const argv) {
 			const String const err_msg = strerror(errno);
 
 			if (verbose_flag)
-				fprintf(stderr, YELLOW "%s\n" RESET, err_msg);
+				printf(YELLOW "Accept Error: %s\n" RESET, err_msg);
 			server_log(err_msg);
 			continue;
 		}
@@ -570,10 +586,13 @@ int main(const int argc, String *const argv) {
 			const String const err_msg = strerror(errno);
 
 			if (verbose_flag)
-				fprintf(stderr, YELLOW "%s\n" RESET, err_msg);
+				printf(YELLOW "Inboud Data Read Error: %s\n" RESET, err_msg);
 			server_log(err_msg);
 		}
 	}
+	if (close(masterfd) == -1)
+		if (verbose_flag)
+			printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
 	free(msg);
 	msg = NULL;
 
