@@ -212,7 +212,7 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	}
 }
 
-void server_log(const String const msg) { // Look into setuid & setgid bits
+void server_log(const String const msg) { // Done
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
 	String log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char)),
@@ -255,7 +255,7 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 	log_dir = NULL;
 }
 
-void process_php(const int client_fd, const String const file_path) { // Thread?
+void process_php(const int client_fd, const String const file_path) { // Done
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1) {
@@ -513,6 +513,7 @@ int main(const int argc, String *const argv) {
 	struct addrinfo addressinfo, *serviceinfo;
 	struct sockaddr client_addr;
 	socklen_t sin_size = sizeof(client_addr);
+	const mode_t mode_d = 0770;
 
 	init_signals();
 	if (argc > MAX_ARGS) {
@@ -524,6 +525,12 @@ int main(const int argc, String *const argv) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
 		exit(EXIT_FAILURE);
 	}
+
+	if ((mkdir(_log_root, mode_d) == -1) && (verbose_flag))
+		if (errno != EEXIST) {
+			printf("Log Directory Error: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 
 	init_addrinfo(&addressinfo);
 
