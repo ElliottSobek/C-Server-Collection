@@ -144,10 +144,8 @@ void load_configuration(const String const path) { // Done
 	String line = "", defn = "", value = "";
 	FILE *conf_f = fopen(path, "r");
 
-	if (!conf_f) {
-		if (verbose_flag)
-			printf(YELLOW "File Error: %s\nUsing default parameter values\n" RESET, strerror(errno));
-	}
+	if ((!conf_f) && (verbose_flag))
+		printf(YELLOW "File Error: %s\nUsing default parameter values\n" RESET, strerror(errno));
 	else {
 		HashTable hashtable = create_ht(DEFAULT_HT_S);
 
@@ -165,9 +163,8 @@ void load_configuration(const String const path) { // Done
 		strncpy(_log_root, get_value(hashtable, "log_root"), PATH_MAX);
 		destroy_table(hashtable);
 	}
-	if (fclose(conf_f) != 0)
-		if (verbose_flag)
-			printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
+	if ((fclose(conf_f) != 0) && (verbose_flag))
+		printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
@@ -243,16 +240,13 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 
 	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
 
-	if (fd == -1) {
-		if (verbose_flag)
-			printf(YELLOW "Logging File Error: %s\n" RESET, strerror(errno));
-	}
+	if ((fd == -1) && (verbose_flag))
+		printf(YELLOW "Logging File Error: %s\n" RESET, strerror(errno));
 	else
 		dprintf(fd, "[%s]: %s\n", f_time, msg);
 
-	if (close(fd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "Loggind File Descriptor Error: %s\n" RESET, strerror(errno));
+	if ((close(fd) == -1) && (verbose_flag))
+		printf(YELLOW "Loggind File Descriptor Error: %s\n" RESET, strerror(errno));
 
 	free(f_time);
 	f_time = NULL;
@@ -276,9 +270,8 @@ void process_php(const int client_fd, const String const file_path) { // Thread?
 		dup2(client_fd, STDOUT_FILENO);
 		execl("/usr/bin/php", "php", file_path, (String) NULL);
 	}
-	if (close(client_fd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "File Descriptor Error 3: %s\n" RESET, strerror(errno));
+	if ((close(client_fd) == -1) && (verbose_flag))
+		printf(YELLOW "File Descriptor Error 3: %s\n" RESET, strerror(errno));
 }
 
 void send_file(const int client_fd, const String const path) { // Done
@@ -309,13 +302,11 @@ void send_file(const int client_fd, const String const path) { // Done
 		f_contents = NULL;
 	}
 
-	if (close(fd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "Copy File Descriptor Error: %s\n" RESET, strerror(errno));
+	if ((close(fd) == -1) && (verbose_flag))
+		printf(YELLOW "Copy File Descriptor Error: %s\n" RESET, strerror(errno));
 
-	if (close(client_fd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "Serve File Descriptor Error: %s\n" RESET, strerror(errno));
+	if ((close(client_fd) == -1) && (verbose_flag))
+		printf(YELLOW "Serve File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
 void respond(const int client_fd, String *const reqlines, const String const path) { // Done
@@ -346,9 +337,8 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 	const int fd = open(path, O_RDONLY);
 
 	if (fd != -1) {
-		if (close(fd) == -1)
-			if (verbose_flag)
-				printf(YELLOW "File Descriptor Error 1: %s\n" RESET, strerror(errno));
+		if ((close(fd) == -1) && (verbose_flag))
+			printf(YELLOW "File Descriptor Error 1: %s\n" RESET, strerror(errno));
 
 		if (verbose_flag)
 			printf(GREEN "GET %s [200 OK]\n" RESET, reqlines[1]);
@@ -590,9 +580,8 @@ int main(const int argc, String *const argv) {
 			server_log(err_msg);
 		}
 	}
-	if (close(masterfd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
+	if ((close(masterfd) == -1) && (verbose_flag))
+		printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
 	free(msg);
 	msg = NULL;
 
