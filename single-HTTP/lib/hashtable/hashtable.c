@@ -114,7 +114,7 @@ static void deep_copy(HashTable new_table, HashTable const ht) {
 		if (!ht->data[i])
 			continue;
 		for (node_t *node = ht->data[i]; node; node = node->next)
-			insert_set(&new_table, node->key, node->value);
+			ht_insert_set(&new_table, node->key, node->value);
 	}
 }
 
@@ -142,7 +142,7 @@ static void print_list(Node const list) {
 	printf("\n");
 }
 
-HashTable create_ht(const unsigned int max_size) {
+HashTable ht_create(const unsigned int max_size) {
 	if (1 > max_size)
 		return NULL;
 
@@ -163,7 +163,7 @@ HashTable create_ht(const unsigned int max_size) {
 	return ht;
 }
 
-void destroy_table(HashTable ht) {
+void ht_destroy(HashTable ht) {
 	for (unsigned int i = 0; i < ht->max_size; i++) {
 		if (!ht->data[i])
 			continue;
@@ -187,15 +187,15 @@ void destroy_table(HashTable ht) {
 	ht = NULL;
 }
 
-void insert_set(HashTable *const ht_head, const String const key, const String const value) {
+void ht_insert_set(HashTable *const ht_head, const String const key, const String const value) {
 	HashTable const ht = *ht_head;
 
 	if (ht->cur_size >= ((ht->max_size * PERCENT_CUTOFF) / 100)) {
-		HashTable new_table = create_ht(ht->max_size * HT_DELTA);
+		HashTable new_table = ht_create(ht->max_size * HT_DELTA);
 
 		deep_copy(new_table, ht);
-		insert_set(&new_table, key, value);
-		destroy_table(ht);
+		ht_insert_set(&new_table, key, value);
+		ht_destroy(ht);
 		*ht_head = new_table;
 		return;
 	}
@@ -211,7 +211,7 @@ void insert_set(HashTable *const ht_head, const String const key, const String c
 	ht->cur_size++;
 }
 
-String get_value(HashTable const ht, const String const key) {
+String ht_get_value(HashTable const ht, const String const key) {
 	const unsigned int bin = get_hash(ht, key);
 	int cmp_res;
 
@@ -225,7 +225,7 @@ String get_value(HashTable const ht, const String const key) {
 	return NULL;
 }
 
-void print_table(HashTable const ht) {
+void ht_print(HashTable const ht) {
 	if (!ht->data[0])
 		printf("nil\n");
 	else {

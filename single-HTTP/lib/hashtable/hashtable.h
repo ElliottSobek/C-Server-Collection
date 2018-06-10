@@ -17,10 +17,10 @@ typedef struct hashtable_s {
 
 typedef hashtable_t *HashTable;
 
-extern HashTable create_ht(const unsigned int);
-extern void destroy_table(HashTable);
-extern void insert_set(HashTable *const, const String const, const String const);
-extern String get_value(HashTable const, const String const);
-extern void print_table(HashTable const);
+extern HashTable ht_create(const unsigned int);
+extern void ht_destroy(HashTable);
+extern void ht_insert_set(HashTable *const, const String const, const String const);
+extern String ht_get_value(HashTable const, const String const);
+extern void ht_print(HashTable const);
 
 #endif /* End HASHTABLE_H */
