@@ -12,10 +12,10 @@
 #define DEFAULT_SIZE 10
 #define PERCENT_CUTOFF 80
 
-static Node create_node(const String const key, const String const value) {
+static Ht_Node create_node(const String const key, const String const value) {
 	const size_t key_len = strnlen(key, STR_MAX), value_len = strnlen(value, STR_MAX);
 
-	Node node = (Node) malloc(sizeof(node_t));
+	Ht_Node node = (Ht_Node) malloc(sizeof(ht_node_t));
 	if (!node)
 		return NULL;
 
@@ -44,8 +44,8 @@ static unsigned int get_hash(HashTable const ht, String value) {
 	return result % ht->max_size;
 }
 
-static void destroy_list(Node list) {
-	Node tmp;
+static void destroy_list(Ht_Node list) {
+	Ht_Node tmp;
 
 	while (list) {
 		tmp = list;
@@ -62,45 +62,8 @@ static void destroy_list(Node list) {
 	}
 }
 
-// static Node find_prev_node(Node const list, const String const entry) {
-// 	const size_t entry_len = strnlen(entry, STR_MAX);
-// 	Node cur = list, prev = NULL;
-
-// 	for (Node node = list; node->next; node = node->next) {
-// 		if (strncmp(entry, node->key, entry_len) == 0)
-// 			return prev;
-// 		prev = cur;
-// 		cur = node->next;
-// 	}
-
-// 	return prev;
-// }
-
-// static void remove_collision_node(Node *const list, Node const prev) {
-// 	Node delete_node;
-
-// 	if (!prev) {
-// 		delete_node = *list;
-// 		*list = (*list)->next;
-// 	} else if (!prev->next)
-// 		delete_node = prev;
-// 	else {
-// 		delete_node = prev->next;
-// 		prev->next = prev->next->next;
-// 	}
-
-// 	free(delete_node->key);
-// 	delete_node->key = NULL;
-
-// 	free(delete_node->value);
-// 	delete_node->value = NULL;
-
-// 	free(delete_node);
-// 	delete_node = NULL;
-// }
-
-static void add_collision_node(Node const list, Node const new_node) {
-	Node node = list;
+static void add_collision_node(Ht_Node const list, Ht_Node const new_node) {
+	Ht_Node node = list;
 
 	while (node->next)
 		node = node->next;
@@ -113,31 +76,13 @@ static void deep_copy(HashTable new_table, HashTable const ht) {
 	for (unsigned int i = 0; i < ht->max_size; i++) {
 		if (!ht->data[i])
 			continue;
-		for (node_t *node = ht->data[i]; node; node = node->next)
+		for (ht_node_t *node = ht->data[i]; node; node = node->next)
 			ht_insert_set(&new_table, node->key, node->value);
 	}
 }
 
-// static void remove_set(HashTable const ht, const String const key) {
-// 	const unsigned int bin = get_hash(ht, key);
-
-// 	if (ht->data[bin]->next)
-// 		remove_collision_node(&ht->data[bin], find_prev_node(ht->data[bin], key));
-// 	else {
-// 		free(ht->data[bin]->key);
-// 		ht->data[bin]->key = NULL;
-
-// 		free(ht->data[bin]->value);
-// 		ht->data[bin]->value = NULL;
-
-// 		free(ht->data[bin]);
-// 		ht->data[bin] = NULL;
-// 	}
-// 	ht->cur_size--;
-// }
-
-static void print_list(Node const list) {
-	for (Node node = list->next; node; node = node->next)
+static void print_list(Ht_Node const list) {
+	for (Ht_Node node = list->next; node; node = node->next)
 		printf("->%s:%s", node->key, node->value);
 	printf("\n");
 }
@@ -150,7 +95,7 @@ HashTable ht_create(const unsigned int max_size) {
 	if (!ht)
 		exit(EXIT_FAILURE);
 
-	ht->data = (Node*) malloc(sizeof(Node) * DEFAULT_SIZE);
+	ht->data = (Ht_Node*) malloc(sizeof(Ht_Node) * DEFAULT_SIZE);
 	if (!ht->data)
 		exit(EXIT_FAILURE);
 
@@ -200,7 +145,7 @@ void ht_insert_set(HashTable *const ht_head, const String const key, const Strin
 		return;
 	}
 
-	Node const node = create_node(key, value);
+	Ht_Node const node = create_node(key, value);
 	const unsigned int bin = get_hash(ht, key);
 
 	if (!ht->data[bin])
@@ -215,7 +160,7 @@ String ht_get_value(HashTable const ht, const String const key) {
 	const unsigned int bin = get_hash(ht, key);
 	int cmp_res;
 
-	for (Node node = ht->data[bin]; node; node = node->next) {
+	for (Ht_Node node = ht->data[bin]; node; node = node->next) {
 		cmp_res = strncmp(key, node->key, strnlen(key, STR_MAX));
 
 		if (0 == cmp_res)

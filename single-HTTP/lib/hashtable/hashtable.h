@@ -3,15 +3,15 @@
 
 #include "../types/types.h"
 
-typedef struct node {
+typedef struct ht_node_s {
 	String key, value;
-	struct node *next;
-} node_t;
+	struct ht_node_s *next;
+} ht_node_t;
 
-typedef node_t *Node;
+typedef ht_node_t *Ht_Node;
 
 typedef struct hashtable_s {
-	Node *data;
+	Ht_Node *data;
 	unsigned int max_size, cur_size;
 } hashtable_t;
 
