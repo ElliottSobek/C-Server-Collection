@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <linux/limits.h>
 
+#include "lib/bst/bst.h"
 #include "lib/types/types.h"
 #include "lib/colors/colors.h"
 #include "lib/hashtable/hashtable.h"
@@ -147,7 +148,7 @@ void load_configuration(const String const path) { // Done
 	if ((!conf_f) && (verbose_flag))
 		printf(YELLOW "File Error: %s\nUsing default parameter values\n" RESET, strerror(errno));
 	else {
-		HashTable hashtable = create_ht(DEFAULT_HT_S);
+		HashTable hashtable = ht_create(DEFAULT_HT_S);
 
 		while (fgets(buffer, KBYTE_S, conf_f)) {
 			if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\t')
@@ -156,12 +157,12 @@ void load_configuration(const String const path) { // Done
 			defn = strtok(line, "=");
 			value = strtok(NULL, "=");
 
-			insert_set(&hashtable, defn, value);
+			ht_insert_set(&hashtable, defn, value);
 		}
-		strncpy(_port, get_value(hashtable, "port"), PORT_LEN);
-		strncpy(_doc_root, get_value(hashtable, "document_root"), PATH_MAX);
-		strncpy(_log_root, get_value(hashtable, "log_root"), PATH_MAX);
-		destroy_table(hashtable);
+		strncpy(_port, ht_get_value(hashtable, "port"), PORT_LEN);
+		strncpy(_doc_root, ht_get_value(hashtable, "document_root"), PATH_MAX);
+		strncpy(_log_root, ht_get_value(hashtable, "log_root"), PATH_MAX);
+		ht_destroy(hashtable);
 	}
 	if ((fclose(conf_f) != 0) && (verbose_flag))
 		printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
@@ -531,6 +532,10 @@ int main(const int argc, String *const argv) {
 			printf("Log Directory Error: %s\n", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
+
+	Bst bst = bst_create();
+	// bst_insert(&bst, "/index", "/static/html/index.html");
+	bst_destroy(bst);
 
 	init_addrinfo(&addressinfo);
 
