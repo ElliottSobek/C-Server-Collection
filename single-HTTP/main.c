@@ -534,7 +534,12 @@ int main(const int argc, String *const argv) {
 		}
 
 	Bst bst = bst_create();
+	bst_insert(bst, "/", "/static/html/index.html");
 	bst_insert(bst, "/index", "/static/html/index.html");
+	bst_insert(bst, "/login", "/static/html/login.php");
+	bst_insert(bst, "/contact", "/static/html/contact.html");
+	//bst_get_value(&bst->root, "/login");
+	printf("\n");
 	bst_print(bst);
 	bst_destroy(bst);
 
