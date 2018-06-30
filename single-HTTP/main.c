@@ -534,7 +534,8 @@ int main(const int argc, String *const argv) {
 		}
 
 	Bst bst = bst_create();
-	// bst_insert(&bst, "/index", "/static/html/index.html");
+	bst_insert(bst, "/index", "/static/html/index.html");
+	bst_print(bst);
 	bst_destroy(bst);
 
 	init_addrinfo(&addressinfo);
