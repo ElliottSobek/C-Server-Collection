@@ -102,10 +102,6 @@ Bst bst_create(void) {
 	if (!bst)
 		exit(EXIT_FAILURE);
 	bst->root = NULL;
-	//bst->root = (Bst_Node) malloc(sizeof(bst_node_t));
-
-	//if (!bst->root)
-	//	exit(EXIT_FAILURE);
 
 	return bst;
 }
