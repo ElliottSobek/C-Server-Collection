@@ -90,6 +90,27 @@ void bst_insert(Bst bst, const String const regex, const String const path) {
 		parent->right = new_node;
 }
 
+String bst_get_value(Bst bst, const String const key) {
+	if (!bst->root) {
+		return "";
+	}
+	int cmp_res;
+	Bst_Node cur = bst->root;
+
+	while (cur) {
+		cmp_res = strncmp(key, cur->regex, strnlen(key, STR_MAX));
+
+		if (cmp_res == 0)
+			return cur->path;
+		else if (cmp_res < 0)
+			cur = cur->left;
+		else
+			cur = cur->right;
+	}
+
+	return "";
+}
+
 void bst_destroy(Bst bst) {
 	bst_destroy_tree(bst->root);
 	free(bst);

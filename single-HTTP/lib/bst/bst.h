@@ -19,7 +19,7 @@ typedef bst_t *Bst;
 extern Bst bst_create(void);
 extern void bst_destroy(Bst);
 extern void bst_insert(Bst, const String const, const String const);
-extern String bst_get_value(Bst_Node const, const String const);
+extern String bst_get_value(Bst const, const String const);
 extern void bst_print(Bst);
 
 #endif /* End BST_H */
