@@ -52,12 +52,16 @@ static void bst_destroy_tree(Bst_Node root) {
 	root = NULL;
 }
 
-void bst_print_in_order(Bst_Node const root) {
+static void bst_print_in_order(Bst_Node const root) {
 	if (!root)
 		return;
 	bst_print_in_order(root->left);
-	printf("%s\n%s\n;", root->regex, root->path);
+	printf("%s->%s\n", root->regex, root->path);
 	bst_print_in_order(root->right);
+}
+
+void bst_print(Bst bst) {
+	bst_print_in_order(bst->root);
 }
 
 void bst_insert(Bst bst, const String const regex, const String const path) {
@@ -97,10 +101,11 @@ Bst bst_create(void) {
 
 	if (!bst)
 		exit(EXIT_FAILURE);
-	bst->root = (Bst_Node) malloc(sizeof(bst_node_t));
+	bst->root = NULL;
+	//bst->root = (Bst_Node) malloc(sizeof(bst_node_t));
 
-	if (!bst->root)
-		exit(EXIT_FAILURE);
+	//if (!bst->root)
+	//	exit(EXIT_FAILURE);
 
 	return bst;
 }

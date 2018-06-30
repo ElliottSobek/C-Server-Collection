@@ -20,6 +20,6 @@ extern Bst bst_create(void);
 extern void bst_destroy(Bst);
 extern void bst_insert(Bst, const String const, const String const);
 extern String bst_get_value(Bst_Node const, const String const);
-extern void bst_print_in_order(Bst_Node const);
+extern void bst_print(Bst);
 
 #endif /* End BST_H */
