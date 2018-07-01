@@ -508,6 +508,14 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 	free_req_lines(reqlines);
 }
 
+void init_url_paths(Bst bst) {
+	bst_insert(bst, "/", "/static/html/index.html");
+	bst_insert(bst, "/index", "/static/html/index.html");
+	bst_insert(bst, "/login", "/static/html/login.php");
+	bst_insert(bst, "/contact", "/static/html/contact.html");
+	bst_insert(bst, "/forbidden", "/static/html/forbidden.html");
+}
+
 int main(const int argc, String *const argv) {
 	char ipv4_address[INET_ADDRSTRLEN];
 	int masterfd, newfd;
@@ -515,6 +523,7 @@ int main(const int argc, String *const argv) {
 	struct sockaddr client_addr;
 	socklen_t sin_size = sizeof(client_addr);
 	const mode_t mode_d = 0770;
+	Bst paths = bst_create();
 
 	init_signals();
 	if (argc > MAX_ARGS) {
@@ -533,16 +542,6 @@ int main(const int argc, String *const argv) {
 			exit(EXIT_FAILURE);
 		}
 
-	Bst bst = bst_create();
-	bst_insert(bst, "/", "/static/html/index.html");
-	bst_insert(bst, "/index", "/static/html/index.html");
-	bst_insert(bst, "/login", "/static/html/login.php");
-	bst_insert(bst, "/contact", "/static/html/contact.html");
-	printf("bst get value: %s", bst_get_value(bst, "/login"));
-	printf("\n");
-	bst_print(bst);
-	bst_destroy(bst);
-
 	init_addrinfo(&addressinfo);
 
 	if (getaddrinfo(NULL, _port, &addressinfo, &serviceinfo) != 0) {
@@ -557,6 +556,8 @@ int main(const int argc, String *const argv) {
 		fprintf(stderr, RED "Listen Error: %s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+
+	init_url_paths(paths);
 
 	String msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
@@ -598,6 +599,8 @@ int main(const int argc, String *const argv) {
 			server_log(err_msg);
 		}
 	}
+	bst_destroy(paths);
+
 	if ((close(masterfd) == -1) && (verbose_flag))
 		printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
 	free(msg);
