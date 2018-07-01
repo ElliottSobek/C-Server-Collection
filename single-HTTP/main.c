@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <stdio.h>
+#include <regex.h>
 #include <libgen.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -422,6 +423,40 @@ void free_req_lines(String *reqline) { // Done
 	reqline = NULL;
 }
 
+String match_url_request(void) {
+	regex_t regex;
+	int reg_res = regcomp(&regex, "regex", 0);
+	char errmsg_buf[STR_MAX] = "";
+
+	if (reg_res != 0) {
+		if (verbose_flag) {
+			regerror(reg_res, &regex, errmsg_buf, sizeof(errmsg_buf));
+			printf(YELLOW "Regex Error: %s\n" RESET, errmsg_buf);
+		}
+		return "partials/code-responses/400.html";
+	}
+
+	reg_res = regexec(&regex, "abc", 0, NULL, 0);
+
+	if (reg_res == REG_NOMATCH) {
+		if (verbose_flag) {
+			regerror(reg_res, &regex, errmsg_buf, sizeof(errmsg_buf));
+			printf("Regex Warning: %s\n", errmsg_buf);
+		}
+		return "partials/code-responses/400.html";
+	}
+	regfree(&regex);
+	return "Done";
+}
+
+void init_url_paths(Bst bst) {
+	bst_insert(bst, "/", "/static/html/index.html");
+	bst_insert(bst, "/index", "/static/html/index.html");
+	bst_insert(bst, "/login", "/static/html/login.php");
+	bst_insert(bst, "/contact", "/static/html/contact.html");
+	bst_insert(bst, "/forbidden", "/static/html/forbidden.html");
+}
+
 void init_addrinfo(struct addrinfo *const addressinfo) { // Done
 	memset(addressinfo, 0, sizeof(*addressinfo));
 	(*addressinfo).ai_family = AF_INET; // IPV4
@@ -506,14 +541,6 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		respond(fd, reqlines, _doc_root);
 	}
 	free_req_lines(reqlines);
-}
-
-void init_url_paths(Bst bst) {
-	bst_insert(bst, "/", "/static/html/index.html");
-	bst_insert(bst, "/index", "/static/html/index.html");
-	bst_insert(bst, "/login", "/static/html/login.php");
-	bst_insert(bst, "/contact", "/static/html/contact.html");
-	bst_insert(bst, "/forbidden", "/static/html/forbidden.html");
 }
 
 int main(const int argc, String *const argv) {
