@@ -8,7 +8,7 @@ CFLAGS := -Wall -Wextra -pedantic -Wno-unused-parameter \
 
 SUBDIRS := lib
 
-OBJECTS := main.o hashtable.o bst.o
+OBJECTS := main.o hashtable.o s_linked_list.o
 
 VPATH := $(shell echo `./getpaths.bash $(SUBDIRS)`)
 
