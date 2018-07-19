@@ -16,10 +16,10 @@
 #include <sys/socket.h>
 #include <linux/limits.h>
 
-#include "lib/bst/bst.h"
 #include "lib/types/types.h"
 #include "lib/colors/colors.h"
 #include "lib/hashtable/hashtable.h"
+#include "lib/s_linked_list/s_linked_list.h"
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
@@ -158,7 +158,7 @@ void load_configuration(const String const path) { // Done
 			defn = strtok(line, "=");
 			value = strtok(NULL, "=");
 
-			ht_insert_set(&hashtable, defn, value);
+			ht_insert(&hashtable, defn, value);
 		}
 		strncpy(_port, ht_get_value(hashtable, "port"), PORT_LEN);
 		strncpy(_doc_root, ht_get_value(hashtable, "document_root"), PATH_MAX);
@@ -449,13 +449,13 @@ String match_url_request(void) {
 	return "Done";
 }
 
-void init_url_paths(Bst bst) {
-	bst_insert(bst, "/", "/static/html/index.html");
-	bst_insert(bst, "/index", "/static/html/index.html");
-	bst_insert(bst, "/login", "/static/html/login.php");
-	bst_insert(bst, "/contact", "/static/html/contact.html");
-	bst_insert(bst, "/forbidden", "/static/html/forbidden.html");
-}
+// void init_url_paths(Bst bst) {
+// 	bst_insert(bst, "/", "/static/html/index.html");
+// 	bst_insert(bst, "/index", "/static/html/index.html");
+// 	bst_insert(bst, "/login", "/static/html/login.php");
+// 	bst_insert(bst, "/contact", "/static/html/contact.html");
+// 	bst_insert(bst, "/forbidden", "/static/html/forbidden.html");
+// }
 
 void init_addrinfo(struct addrinfo *const addressinfo) { // Done
 	memset(addressinfo, 0, sizeof(*addressinfo));
@@ -550,7 +550,8 @@ int main(const int argc, String *const argv) {
 	struct sockaddr client_addr;
 	socklen_t sin_size = sizeof(client_addr);
 	const mode_t mode_d = 0770;
-	Bst paths = bst_create();
+	// Bst paths = bst_create();
+	// linked list create
 
 	init_signals();
 	if (argc > MAX_ARGS) {
@@ -584,7 +585,7 @@ int main(const int argc, String *const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	init_url_paths(paths);
+	// init_url_paths(paths);
 
 	String msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
@@ -626,7 +627,8 @@ int main(const int argc, String *const argv) {
 			server_log(err_msg);
 		}
 	}
-	bst_destroy(paths);
+	// bst_destroy(paths);
+	// // linked list destroy
 
 	if ((close(masterfd) == -1) && (verbose_flag))
 		printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
