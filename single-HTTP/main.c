@@ -449,13 +449,13 @@ String match_url_request(void) {
 	return "Done";
 }
 
-// void init_url_paths(Bst bst) {
-// 	bst_insert(bst, "/", "/static/html/index.html");
-// 	bst_insert(bst, "/index", "/static/html/index.html");
-// 	bst_insert(bst, "/login", "/static/html/login.php");
-// 	bst_insert(bst, "/contact", "/static/html/contact.html");
-// 	bst_insert(bst, "/forbidden", "/static/html/forbidden.html");
-// }
+void init_url_paths(S_Ll list) {
+	s_ll_insert(list, "/", "/static/html/index.html");
+	s_ll_insert(list, "/index", "/static/html/index.html");
+	s_ll_insert(list, "/login", "/static/html/login.php");
+	s_ll_insert(list, "/contact", "/static/html/contact.html");
+	s_ll_insert(list, "/forbidden", "/static/html/forbidden.html");
+}
 
 void init_addrinfo(struct addrinfo *const addressinfo) { // Done
 	memset(addressinfo, 0, sizeof(*addressinfo));
@@ -550,8 +550,7 @@ int main(const int argc, String *const argv) {
 	struct sockaddr client_addr;
 	socklen_t sin_size = sizeof(client_addr);
 	const mode_t mode_d = 0770;
-	// Bst paths = bst_create();
-	// linked list create
+	S_Ll paths = s_ll_create();
 
 	init_signals();
 	if (argc > MAX_ARGS) {
@@ -585,7 +584,7 @@ int main(const int argc, String *const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	// init_url_paths(paths);
+	init_url_paths(paths);
 
 	String msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
@@ -627,8 +626,7 @@ int main(const int argc, String *const argv) {
 			server_log(err_msg);
 		}
 	}
-	// bst_destroy(paths);
-	// // linked list destroy
+	s_ll_destroy(paths);
 
 	if ((close(masterfd) == -1) && (verbose_flag))
 		printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
