@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <stdio.h>
-#include <regex.h>
 #include <libgen.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -89,6 +88,8 @@ String const _http_ver[HTTP_VER_AMT] = {
 	"HTTP/1.1",
 	"HTTP/2.0"
 };
+S_Ll _paths;
+
 bool verbose_flag = false, sigint_flag = true;
 
 bool is_valid_port(void) { // Done
@@ -107,15 +108,6 @@ bool is_valid_request(String *const reqline) { // Done
 			return true;
 
 	return false;
-}
-
-void determine_root(String *const reqlines) { // Done
-	String const path = reqlines[1];
-
-	if (strncmp(path, "/\0", MDEFAULT_PAGE_LEN) == 0)
-		strncpy(path, "static/html/index.html", DEFAULT_PAGE_LEN);
-	else
-		memmove(path, path + 1, strnlen(path, PATH_MAX));
 }
 
 String clean_config_line(String string) { // Done
@@ -248,7 +240,7 @@ void server_log(const String const msg) { // Done
 		dprintf(fd, "[%s]: %s\n", f_time, msg);
 
 	if ((close(fd) == -1) && (verbose_flag))
-		printf(YELLOW "Loggind File Descriptor Error: %s\n" RESET, strerror(errno));
+		printf(YELLOW "Logging File Descriptor Error: %s\n" RESET, strerror(errno));
 
 	free(f_time);
 	f_time = NULL;
@@ -423,38 +415,12 @@ void free_req_lines(String *reqline) { // Done
 	reqline = NULL;
 }
 
-String match_url_request(void) {
-	regex_t regex;
-	int reg_res = regcomp(&regex, "regex", 0);
-	char errmsg_buf[STR_MAX] = "";
-
-	if (reg_res != 0) {
-		if (verbose_flag) {
-			regerror(reg_res, &regex, errmsg_buf, sizeof(errmsg_buf));
-			printf(YELLOW "Regex Error: %s\n" RESET, errmsg_buf);
-		}
-		return "partials/code-responses/400.html";
-	}
-
-	reg_res = regexec(&regex, "abc", 0, NULL, 0);
-
-	if (reg_res == REG_NOMATCH) {
-		if (verbose_flag) {
-			regerror(reg_res, &regex, errmsg_buf, sizeof(errmsg_buf));
-			printf("Regex Warning: %s\n", errmsg_buf);
-		}
-		return "partials/code-responses/400.html";
-	}
-	regfree(&regex);
-	return "Done";
-}
-
-void init_url_paths(S_Ll list) {
-	s_ll_insert(list, "/", "/static/html/index.html");
-	s_ll_insert(list, "/index", "/static/html/index.html");
-	s_ll_insert(list, "/login", "/static/html/login.php");
-	s_ll_insert(list, "/contact", "/static/html/contact.html");
-	s_ll_insert(list, "/forbidden", "/static/html/forbidden.html");
+void init_url_paths() {
+	s_ll_insert(_paths, "/", "static/html/index.html");
+	s_ll_insert(_paths, "/index", "static/html/index.html");
+	s_ll_insert(_paths, "/login", "views/login.php");
+	s_ll_insert(_paths, "/contact", "static/html/contact.html");
+	s_ll_insert(_paths, "/forbidden", "static/html/forbidden.html");
 }
 
 void init_addrinfo(struct addrinfo *const addressinfo) { // Done
@@ -518,6 +484,46 @@ void init_signals(void) { // Done
 	}
 }
 
+bool is_image(const String const restrict extension) {
+	const String const img_ext[] = {".png", ".jpg", ".jpeg", ".tiff", ".gif", ".bmp", ".svg", ".ico"};
+	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
+
+	for (unsigned int i = 0; i < img_ext_len; i++)
+		if (strncmp(extension, img_ext[i], CONF_EXT_LEN) == 0)
+			return true;
+	return false;
+}
+
+bool is_audio(const String const restrict extension) {
+	const String const img_ext[] = {".wav", ".flac", ".opus", ".mp3", ".aac", ".ogg", ".pcm", ".aiff", ".wma", ".alac"};
+	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
+
+	for (unsigned int i = 0; i < img_ext_len; i++)
+		if (strncmp(extension, img_ext[i], CONF_EXT_LEN) == 0)
+			return true;
+	return false;
+}
+
+bool is_video(const String const restrict extension) {
+	const String const img_ext[] = {".mp4", ".mov", ".avi", ".flv", ".wmv"};
+	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
+
+	for (unsigned int i = 0; i < img_ext_len; i++)
+		if (strncmp(extension, img_ext[i], CONF_EXT_LEN) == 0)
+			return true;
+	return false;
+}
+
+bool is_binary(const String const restrict extension) {
+	const String const img_ext[] = {".exe", ".img", ".bin"};
+	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
+
+	for (unsigned int i = 0; i < img_ext_len; i++)
+		if (strncmp(extension, img_ext[i], CONF_EXT_LEN) == 0)
+			return true;
+	return false;
+}
+
 void process_request(const int fd, String msg, const String const ipv4_address) { // Done
 	char cust_msg[MSG_TEMP_LEN + PATH_MAX],
 		 **const reqlines = get_req_lines(msg);
@@ -531,8 +537,27 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
 		send_file(fd, "partials/code-responses/400.html");
 	} else {
-		determine_root(reqlines);
-		strncat(_doc_root, reqlines[1], PATH_MAX);
+		const S_Ll_Node data = s_ll_find(_paths, reqlines[1]);
+
+		if (data)
+			strncat(_doc_root, data->path, PATH_MAX);
+		else {
+			String extension = strrchr(reqlines[1], '.');
+
+			if (strncmp(extension, ".css", CONF_EXT_LEN) == 0)
+				strncat(_doc_root, "static/css/", PATH_MAX);
+			else if (strncmp(extension, ".js", CONF_EXT_LEN) == 0)
+				strncat(_doc_root, "static/javascript/", PATH_MAX);
+			else if (is_image(extension))
+				strncat(_doc_root, "static/images/", PATH_MAX);
+			else if (is_audio(extension))
+				strncat(_doc_root, "static/audio/", PATH_MAX);
+			else if (is_video(extension))
+				strncat(_doc_root, "static/video/", PATH_MAX);
+			else if (is_binary(extension))
+				strncat(_doc_root, "static/binary/", PATH_MAX);
+			strncat(_doc_root, reqlines[1], PATH_MAX);
+		}
 		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv4_address, reqlines[1]);
 
 		if (verbose_flag)
@@ -550,7 +575,8 @@ int main(const int argc, String *const argv) {
 	struct sockaddr client_addr;
 	socklen_t sin_size = sizeof(client_addr);
 	const mode_t mode_d = 0770;
-	S_Ll paths = s_ll_create();
+
+	_paths = s_ll_create();
 
 	init_signals();
 	if (argc > MAX_ARGS) {
@@ -584,7 +610,7 @@ int main(const int argc, String *const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	init_url_paths(paths);
+	init_url_paths();
 
 	String msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
@@ -626,7 +652,7 @@ int main(const int argc, String *const argv) {
 			server_log(err_msg);
 		}
 	}
-	s_ll_destroy(paths);
+	s_ll_destroy(_paths);
 
 	if ((close(masterfd) == -1) && (verbose_flag))
 		printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
