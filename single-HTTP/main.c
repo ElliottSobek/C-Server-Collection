@@ -537,27 +537,26 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
 		send_file(fd, "partials/code-responses/400.html");
 	} else {
-		const S_Ll_Node data = s_ll_find(_paths, reqlines[1]);
+		S_Ll_Node data;
+		const String const restrict extension = strrchr(reqlines[1], '.');
 
-		if (data)
-			strncat(_doc_root, data->path, PATH_MAX);
-		else {
-			String extension = strrchr(reqlines[1], '.');
-
+		if (extension) {
 			if (strncmp(extension, ".css", CONF_EXT_LEN) == 0)
 				strncat(_doc_root, "static/css/", PATH_MAX);
 			else if (strncmp(extension, ".js", CONF_EXT_LEN) == 0)
 				strncat(_doc_root, "static/javascript/", PATH_MAX);
 			else if (is_image(extension))
 				strncat(_doc_root, "static/images/", PATH_MAX);
-			else if (is_audio(extension))
-				strncat(_doc_root, "static/audio/", PATH_MAX);
 			else if (is_video(extension))
 				strncat(_doc_root, "static/video/", PATH_MAX);
 			else if (is_binary(extension))
 				strncat(_doc_root, "static/binary/", PATH_MAX);
+			else if (is_audio(extension))
+				strncat(_doc_root, "static/audio/", PATH_MAX);
 			strncat(_doc_root, reqlines[1], PATH_MAX);
 		}
+		else if ((data = s_ll_find(_paths, reqlines[1])))
+			strncat(_doc_root, data->path, PATH_MAX);
 		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv4_address, reqlines[1]);
 
 		if (verbose_flag)
