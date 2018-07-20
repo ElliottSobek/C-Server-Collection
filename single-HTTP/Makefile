@@ -8,20 +8,30 @@ CFLAGS := -Wall -Wextra -pedantic -Wno-unused-parameter \
 
 SUBDIRS := lib
 
-OBJECTS := main.o hashtable.o
+OBJECTS := main.o hashtable.o s_linked_list.o
 
 VPATH := $(shell echo `./getpaths.bash $(SUBDIRS)`)
+
+ifeq ($(MAKECMDGOALS),)
+override CFLAGS += -g
+else ifeq ($(MAKECMDGOALS),debug)
+override CFLAGS += -g
+else ifeq ($(MAKECMDGOALS),profile)
+override CFLAGS += -pg
+else
+override CFLAGS += -O3
+endif
 
 .PHONY: debug profile production clean
 
 debug: $(OBJECTS)
-	$(CC) $(CFLAGS) -g $^ -o single-HTTP-debug
+	$(CC) $(CFLAGS) $^ -o single-HTTP-debug
 
 profile: $(OBJECTS)
-	$(CC) $(CFLAGS) -pg $^ -o single-HTTP-profile
+	$(CC) $(CFLAGS) $^ -o single-HTTP-profile
 
 production: $(OBJECTS)
-	$(CC) $(CFLAGS) -O3 $^ -o single-HTTP
+	$(CC) $(CFLAGS) $^ -o single-HTTP
 
 $(OBJECTS):
 

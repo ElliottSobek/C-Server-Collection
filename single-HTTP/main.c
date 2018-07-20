@@ -18,6 +18,7 @@
 #include "lib/types/types.h"
 #include "lib/colors/colors.h"
 #include "lib/hashtable/hashtable.h"
+#include "lib/s_linked_list/s_linked_list.h"
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
@@ -87,6 +88,8 @@ String const _http_ver[HTTP_VER_AMT] = {
 	"HTTP/1.1",
 	"HTTP/2.0"
 };
+S_Ll _paths;
+
 bool verbose_flag = false, sigint_flag = true;
 
 bool is_valid_port(void) { // Done
@@ -105,15 +108,6 @@ bool is_valid_request(String *const reqline) { // Done
 			return true;
 
 	return false;
-}
-
-void determine_root(String *const reqlines) { // Done
-	String const path = reqlines[1];
-
-	if (strncmp(path, "/\0", MDEFAULT_PAGE_LEN) == 0)
-		strncpy(path, "static/html/index.html", DEFAULT_PAGE_LEN);
-	else
-		memmove(path, path + 1, strnlen(path, PATH_MAX));
 }
 
 String clean_config_line(String string) { // Done
@@ -144,12 +138,10 @@ void load_configuration(const String const path) { // Done
 	String line = "", defn = "", value = "";
 	FILE *conf_f = fopen(path, "r");
 
-	if (!conf_f) {
-		if (verbose_flag)
-			printf(YELLOW "File Error: %s\nUsing default parameter values\n" RESET, strerror(errno));
-	}
+	if ((!conf_f) && (verbose_flag))
+		printf(YELLOW "File Error: %s\nUsing default parameter values\n" RESET, strerror(errno));
 	else {
-		HashTable hashtable = create_ht(DEFAULT_HT_S);
+		HashTable hashtable = ht_create(DEFAULT_HT_S);
 
 		while (fgets(buffer, KBYTE_S, conf_f)) {
 			if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\t')
@@ -158,16 +150,15 @@ void load_configuration(const String const path) { // Done
 			defn = strtok(line, "=");
 			value = strtok(NULL, "=");
 
-			insert_set(&hashtable, defn, value);
+			ht_insert(&hashtable, defn, value);
 		}
-		strncpy(_port, get_value(hashtable, "port"), PORT_LEN);
-		strncpy(_doc_root, get_value(hashtable, "document_root"), PATH_MAX);
-		strncpy(_log_root, get_value(hashtable, "log_root"), PATH_MAX);
-		destroy_table(hashtable);
+		strncpy(_port, ht_get_value(hashtable, "port"), PORT_LEN);
+		strncpy(_doc_root, ht_get_value(hashtable, "document_root"), PATH_MAX);
+		strncpy(_log_root, ht_get_value(hashtable, "log_root"), PATH_MAX);
+		ht_destroy(hashtable);
 	}
-	if (fclose(conf_f) != 0)
-		if (verbose_flag)
-			printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
+	if ((fclose(conf_f) != 0) && (verbose_flag))
+		printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
@@ -215,7 +206,7 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	}
 }
 
-void server_log(const String const msg) { // Look into setuid & setgid bits
+void server_log(const String const msg) { // Done
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
 	String log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char)),
@@ -243,16 +234,13 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 
 	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
 
-	if (fd == -1) {
-		if (verbose_flag)
-			printf(YELLOW "Logging File Error: %s\n" RESET, strerror(errno));
-	}
+	if ((fd == -1) && (verbose_flag))
+		printf(YELLOW "Logging File Error: %s\n" RESET, strerror(errno));
 	else
 		dprintf(fd, "[%s]: %s\n", f_time, msg);
 
-	if (close(fd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "Loggind File Descriptor Error: %s\n" RESET, strerror(errno));
+	if ((close(fd) == -1) && (verbose_flag))
+		printf(YELLOW "Logging File Descriptor Error: %s\n" RESET, strerror(errno));
 
 	free(f_time);
 	f_time = NULL;
@@ -261,7 +249,7 @@ void server_log(const String const msg) { // Look into setuid & setgid bits
 	log_dir = NULL;
 }
 
-void process_php(const int client_fd, const String const file_path) { // Thread?
+void process_php(const int client_fd, const String const file_path) { // Done
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1) {
@@ -276,9 +264,8 @@ void process_php(const int client_fd, const String const file_path) { // Thread?
 		dup2(client_fd, STDOUT_FILENO);
 		execl("/usr/bin/php", "php", file_path, (String) NULL);
 	}
-	if (close(client_fd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "File Descriptor Error 3: %s\n" RESET, strerror(errno));
+	if ((close(client_fd) == -1) && (verbose_flag))
+		printf(YELLOW "File Descriptor Error 3: %s\n" RESET, strerror(errno));
 }
 
 void send_file(const int client_fd, const String const path) { // Done
@@ -309,13 +296,11 @@ void send_file(const int client_fd, const String const path) { // Done
 		f_contents = NULL;
 	}
 
-	if (close(fd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "Copy File Descriptor Error: %s\n" RESET, strerror(errno));
+	if ((close(fd) == -1) && (verbose_flag))
+		printf(YELLOW "Copy File Descriptor Error: %s\n" RESET, strerror(errno));
 
-	if (close(client_fd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "Serve File Descriptor Error: %s\n" RESET, strerror(errno));
+	if ((close(client_fd) == -1) && (verbose_flag))
+		printf(YELLOW "Serve File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
 void respond(const int client_fd, String *const reqlines, const String const path) { // Done
@@ -346,9 +331,8 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 	const int fd = open(path, O_RDONLY);
 
 	if (fd != -1) {
-		if (close(fd) == -1)
-			if (verbose_flag)
-				printf(YELLOW "File Descriptor Error 1: %s\n" RESET, strerror(errno));
+		if ((close(fd) == -1) && (verbose_flag))
+			printf(YELLOW "File Descriptor Error 1: %s\n" RESET, strerror(errno));
 
 		if (verbose_flag)
 			printf(GREEN "GET %s [200 OK]\n" RESET, reqlines[1]);
@@ -431,6 +415,14 @@ void free_req_lines(String *reqline) { // Done
 	reqline = NULL;
 }
 
+void init_url_paths() {
+	s_ll_insert(_paths, "/", "static/html/index.html");
+	s_ll_insert(_paths, "/index", "static/html/index.html");
+	s_ll_insert(_paths, "/login", "views/login.php");
+	s_ll_insert(_paths, "/contact", "static/html/contact.html");
+	s_ll_insert(_paths, "/forbidden", "static/html/forbidden.html");
+}
+
 void init_addrinfo(struct addrinfo *const addressinfo) { // Done
 	memset(addressinfo, 0, sizeof(*addressinfo));
 	(*addressinfo).ai_family = AF_INET; // IPV4
@@ -492,6 +484,46 @@ void init_signals(void) { // Done
 	}
 }
 
+bool is_image(const String const restrict extension) {
+	const String const img_ext[] = {".png", ".jpg", ".jpeg", ".tiff", ".gif", ".bmp", ".svg", ".ico"};
+	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
+
+	for (unsigned int i = 0; i < img_ext_len; i++)
+		if (strncmp(extension, img_ext[i], CONF_EXT_LEN) == 0)
+			return true;
+	return false;
+}
+
+bool is_audio(const String const restrict extension) {
+	const String const img_ext[] = {".wav", ".flac", ".opus", ".mp3", ".aac", ".ogg", ".pcm", ".aiff", ".wma", ".alac"};
+	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
+
+	for (unsigned int i = 0; i < img_ext_len; i++)
+		if (strncmp(extension, img_ext[i], CONF_EXT_LEN) == 0)
+			return true;
+	return false;
+}
+
+bool is_video(const String const restrict extension) {
+	const String const img_ext[] = {".mp4", ".mov", ".avi", ".flv", ".wmv"};
+	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
+
+	for (unsigned int i = 0; i < img_ext_len; i++)
+		if (strncmp(extension, img_ext[i], CONF_EXT_LEN) == 0)
+			return true;
+	return false;
+}
+
+bool is_binary(const String const restrict extension) {
+	const String const img_ext[] = {".exe", ".img", ".bin"};
+	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
+
+	for (unsigned int i = 0; i < img_ext_len; i++)
+		if (strncmp(extension, img_ext[i], CONF_EXT_LEN) == 0)
+			return true;
+	return false;
+}
+
 void process_request(const int fd, String msg, const String const ipv4_address) { // Done
 	char cust_msg[MSG_TEMP_LEN + PATH_MAX],
 		 **const reqlines = get_req_lines(msg);
@@ -505,8 +537,26 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
 		send_file(fd, "partials/code-responses/400.html");
 	} else {
-		determine_root(reqlines);
-		strncat(_doc_root, reqlines[1], PATH_MAX);
+		S_Ll_Node data;
+		const String const restrict extension = strrchr(reqlines[1], '.');
+
+		if (extension) {
+			if (strncmp(extension, ".css", CONF_EXT_LEN) == 0)
+				strncat(_doc_root, "static/css/", PATH_MAX);
+			else if (strncmp(extension, ".js", CONF_EXT_LEN) == 0)
+				strncat(_doc_root, "static/javascript/", PATH_MAX);
+			else if (is_image(extension))
+				strncat(_doc_root, "static/images/", PATH_MAX);
+			else if (is_video(extension))
+				strncat(_doc_root, "static/video/", PATH_MAX);
+			else if (is_binary(extension))
+				strncat(_doc_root, "static/binary/", PATH_MAX);
+			else if (is_audio(extension))
+				strncat(_doc_root, "static/audio/", PATH_MAX);
+			strncat(_doc_root, reqlines[1], PATH_MAX);
+		}
+		else if ((data = s_ll_find(_paths, reqlines[1])))
+			strncat(_doc_root, data->path, PATH_MAX);
 		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv4_address, reqlines[1]);
 
 		if (verbose_flag)
@@ -523,6 +573,9 @@ int main(const int argc, String *const argv) {
 	struct addrinfo addressinfo, *serviceinfo;
 	struct sockaddr client_addr;
 	socklen_t sin_size = sizeof(client_addr);
+	const mode_t mode_d = 0770;
+
+	_paths = s_ll_create();
 
 	init_signals();
 	if (argc > MAX_ARGS) {
@@ -534,6 +587,12 @@ int main(const int argc, String *const argv) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
 		exit(EXIT_FAILURE);
 	}
+
+	if ((mkdir(_log_root, mode_d) == -1) && (verbose_flag))
+		if (errno != EEXIST) {
+			printf("Log Directory Error: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 
 	init_addrinfo(&addressinfo);
 
@@ -549,6 +608,8 @@ int main(const int argc, String *const argv) {
 		fprintf(stderr, RED "Listen Error: %s\n" RESET, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+
+	init_url_paths();
 
 	String msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
@@ -590,9 +651,10 @@ int main(const int argc, String *const argv) {
 			server_log(err_msg);
 		}
 	}
-	if (close(masterfd) == -1)
-		if (verbose_flag)
-			printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
+	s_ll_destroy(_paths);
+
+	if ((close(masterfd) == -1) && (verbose_flag))
+		printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
 	free(msg);
 	msg = NULL;
 
