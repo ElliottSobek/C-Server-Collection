@@ -64,30 +64,17 @@
 #define	CODE_501_LEN 30
 #define CODE_505_LEN 41
 #define MSG_TEMP_LEN 41
+#define HTTP_METHOD_LEN 7
 #define DEFAULT_PAGE_LEN 22
 #define MDEFAULT_PAGE_LEN 2
 #define FF_TIME_PATH_MLEN 19
+#define IMPLEMENTED_HTTP_METHODS_LEN 2
 
 #define KBYTE_S 1024
 
 char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT,
 	 _log_root[PATH_MAX] = DEFAULT_LOG_ROOT;
-const String const _http_requests[HTTP_REQ_AMT] = {
-	"GET",
-	"HEAD",
-	"POST",
-	"PUT",
-	"DELETE",
-	"CONNECT",
-	"OPTIONS",
-	"TRACE"
-};
-String const _http_ver[HTTP_VER_AMT] = {
-	"HTTP/1.0",
-	"HTTP/1.1",
-	"HTTP/2.0"
-};
 S_Ll _paths;
 
 bool verbose_flag = false, sigint_flag = true;
@@ -99,12 +86,18 @@ bool is_valid_port(void) { // Done
 }
 
 bool is_valid_request(String *const reqline) { // Done
-	for (int i = 0; i < HTTP_REQ_AMT; i++)
-		if (strncmp(reqline[0], _http_requests[i], strnlen(_http_requests[i], STR_MAX)) == 0)
+	const String const restrict http_methods[HTTP_REQ_AMT] = {
+		"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE"
+	};
+
+	for (int i = 0; i < HTTP_REQ_AMT; i++) // Double check
+		if (strncmp(reqline[0], http_methods[i], strnlen(http_methods[i], STR_MAX)) == 0)
 			return true;
 
+	const String const restrict http_ver[HTTP_VER_AMT] = {"HTTP/1.0", "HTTP/1.1", "HTTP/2.0"};
+
 	for (int i = 0; i < HTTP_VER_AMT; i++)
-		if (strncmp(reqline[2], _http_ver[i], strnlen(_http_ver[i], STR_MAX)) == 0)
+		if (strncmp(reqline[2], http_ver[i], strnlen(http_ver[i], STR_MAX)) == 0)
 			return true;
 
 	return false;
@@ -320,7 +313,16 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 		return;
 	}
 
-	if (strncmp(reqlines[0], "GET", 3) != 0) {
+	const String const restrict implemented_http_methods[IMPLEMENTED_HTTP_METHODS_LEN] = {"GET", "POST"};
+	bool in = false;
+
+	for (unsigned int i = 0; i < IMPLEMENTED_HTTP_METHODS_LEN; i++)
+		if (strncmp(reqlines[0], implemented_http_methods[i], HTTP_METHOD_LEN) == 0) {
+			in = true;
+			break;
+		}
+
+	if (!in) {
 		if (verbose_flag)
 			printf("%s %s [501 Not Implemented]\n", reqlines[0], reqlines[1]);
 		send(client_fd, NOT_IMPLEMENTED, CODE_501_LEN, 0);
