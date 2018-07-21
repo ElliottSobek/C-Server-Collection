@@ -8,26 +8,57 @@
 		<script src="/behaviour.js"></script>
 	</head>
 	<header>
-		<h1>HEADER</h1>
-		<a href="login">Login</a>
-		<img src="/favicon.ico" alt="Fav Icon" width="100" height="100">
+		<div>
+			<h1>HEADER</h1>
+			<a href="login">Login</a>
+		</div>
+		<div>
+			<picture>
+				<img src="/favicon.ico" alt="Fav Icon" width="100" height="100">
+			</picture>
+		</div>
 	</header>
 	<body id="main">
 		<div>
 			<h1>Test</h1>
 			<p>This is a test</p>
 		</div>
+		<!-- <div>
+			<video controls poster="/forest.png">
+				<source src="/forest.mp4" type="video/mp4" media="screen">
+			</video>
+		</div> -->
 		<div>
 			<h2>Download</h2>
-			<a href="/npp.exe">Notepad++</a>
+			<a href="/server.exe">This Server</a>
 		</div>
+
 		<div>
 			<h2>Forbidden</h2>
 			<a href="forbidden">Forbidden</a>
 		</div>
+		<div>
+			<audio controls>
+				<source src="/tone.wav" type="audio/wav">
+			</audio>
+		</div>
 	</body>
 	<footer>
-		<h1>FOOTER</h1>
-		<a href="contact">Contact Us</a>
+		<div>
+			<h1>FOOTER</h1>
+			<a href="contact">Contact Us</a>
+		</div>
+		<br>
+		<div>
+			<form action="login_submit" method="post" accept-charset="utf-8">
+				Name: <input type="text" name="name" placeholder="Name">
+				<br>
+				Email: <input type="email" name="email" placeholder="example@example.com">
+				<br>
+				Password: <input type="password" name="password" placeholder="Password">
+				<br>
+				<button type="submit">Submit</button>
+			</form>
+		</div>
 	</footer>
 </html>
