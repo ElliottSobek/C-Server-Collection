@@ -4,5 +4,6 @@
 #include "../types/types.h"
 
 extern int select(const String const restrict);
+extern int select2(const String const restrict);
 
 #endif /* End SQLITE3_H */
