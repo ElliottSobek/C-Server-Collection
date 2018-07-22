@@ -17,6 +17,7 @@
 
 #include "lib/types/types.h"
 #include "lib/colors/colors.h"
+#include "lib/sqlite3/sqlite3.h"
 #include "lib/hashtable/hashtable.h"
 #include "lib/s_linked_list/s_linked_list.h"
 
@@ -578,6 +579,21 @@ int main(const int argc, String *const argv) {
 	const mode_t mode_d = 0770;
 
 	_paths = s_ll_create();
+
+	printf("START\n");
+	select("CREATE TABLE IF NOT EXISTS test("
+	       "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,"
+	       "c1 VARCHAR(25) NOT NULL, "
+	       "c2 VARCHAR(25) NOT NULL, "
+	       "c3 VARCHAR(25)"
+	       ");");
+	select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three')");
+	select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three')");
+	select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', NULL)");
+	select("SELECT * FROM test;");
+	printf("END\n");
+
+	exit(EXIT_SUCCESS);
 
 	init_signals();
 	if (argc > MAX_ARGS) {
