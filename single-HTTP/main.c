@@ -587,10 +587,16 @@ int main(const int argc, String *const argv) {
 	       "c2 VARCHAR(25) NOT NULL, "
 	       "c3 VARCHAR(25)"
 	       ");");
-	select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three')");
-	select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three')");
-	select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', NULL)");
+	select("CREATE TABLE IF NOT EXISTS example("
+	       "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL"
+	       ");");
+	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three')");
+	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three')");
+	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', NULL)");
 	select("SELECT * FROM test;");
+	select2("SELECT * FROM test;");
+	select("SELECT c1 FROM example;");
+	select2("SELECT c1 FROM example;");
 	printf("END\n");
 
 	exit(EXIT_SUCCESS);
