@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 #include <sqlite3.h>
 
 #include "../types/types.h"
@@ -15,17 +16,6 @@ static int result_set(void *unused, const int col_num, char **row_value, char **
     printf("\n");
     return 0;
 }
-
-// static int rows_affected(void *unused, const int col_num, char **row_value, char **col_name) {
-// sqlite3_changes(db);
-
-//     printf("| %s |", row_value[0] ? row_value[0]: "NULL");
-
-//     for (int i = 1; i < col_num; i++)
-//         printf(" %s |", row_value[i] ? row_value[i]: "NULL");
-//     printf("\n");
-//     return 0;
-// }
 
 static void print_headers(const int rows, sqlite3_stmt *sql_byte_code) {
     sqlite3_step(sql_byte_code);
@@ -78,32 +68,39 @@ int select2(const String const restrict stmt) {
     print_headers(rows, sql_byte_code);
     print_rows(rows, sql_byte_code);
     sqlite3_finalize(sql_byte_code);
+    const int rows_affected = sqlite3_changes(db);
+
     sqlite3_close(db);
 
-    return 0;
+    return rows_affected;
 }
 
 // printf("This is sqlite3_data_count: %d\n", sqlite3_data_count(res));
 // printf("This is sqlite3_column_count: %d\n", rows);
-// sqlite3_changes(db);
 int select(const String const restrict stmt) {
     sqlite3 *db;
     String err_msg;
-    int result_codet = sqlite3_open("database/db.sqlite3", &db);
+    int result_code = sqlite3_open("database/db.sqlite3", &db);
 
-    if (result_codet != SQLITE_OK) {
+    if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
         exit(EXIT_FAILURE);
     }
-    result_codet = sqlite3_exec(db, stmt, result_set, NULL, &err_msg);
 
-    if (result_codet != SQLITE_OK) {
+    if (strncasecmp("SELECT", stmt, 6) == 0)
+        result_code = sqlite3_exec(db, stmt, result_set, NULL, &err_msg);
+    else
+        result_code = sqlite3_exec(db, stmt, NULL, NULL, &err_msg);
+
+    if (result_code != SQLITE_OK) {
         fprintf(stderr, YELLOW "SQL error: %s\n" RESET, err_msg);
         sqlite3_free(err_msg);
         sqlite3_close(db);
         return -1;
     }
+    const int rows_affected = sqlite3_changes(db);
+
     sqlite3_close(db);
 
-    return 0;
+    return rows_affected;
 }

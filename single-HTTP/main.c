@@ -590,13 +590,14 @@ int main(const int argc, String *const argv) {
 	select("CREATE TABLE IF NOT EXISTS example("
 	       "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL"
 	       ");");
-	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three')");
-	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three')");
-	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', NULL)");
-	select("SELECT * FROM test;");
-	select2("SELECT * FROM test;");
-	select("SELECT c1 FROM example;");
-	select2("SELECT c1 FROM example;");
+	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three');");
+	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three');");
+	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', NULL);");
+	printf("Rows affected: %d\n", select("UPDATE test SET c1='One', c2='One', c3='One' WHERE id=3;"));
+	printf("Rows affected: %d\n", select("SELECT * FROM test;"));
+	// printf("Rows affected: %d\n", select2("SELECT * FROM test;"));
+	// printf("Rows affected: %d\n", select("SELECT c1 FROM example;"));
+	// printf("Rows affected: %d\n", select2("SELECT c1 FROM example;"));
 	printf("END\n");
 
 	exit(EXIT_SUCCESS);
