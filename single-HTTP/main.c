@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <linux/limits.h>
 
+#include "globals.h"
 #include "lib/types/types.h"
 #include "lib/colors/colors.h"
 #include "lib/sqlite3/sqlite3.h"
@@ -71,14 +72,12 @@
 #define FF_TIME_PATH_MLEN 19
 #define IMPLEMENTED_HTTP_METHODS_LEN 2
 
-#define KBYTE_S 1024
-
+S_Ll _paths;
 char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT,
 	 _log_root[PATH_MAX] = DEFAULT_LOG_ROOT;
-S_Ll _paths;
 
-bool verbose_flag = false, sigint_flag = true;
+bool sigint_flag = true;
 
 bool is_valid_port(void) { // Done
 	const int port_num = atoi(_port);
@@ -578,26 +577,27 @@ int main(const int argc, String *const argv) {
 	socklen_t sin_size = sizeof(client_addr);
 	const mode_t mode_d = 0770;
 
+	verbose_flag = true;
 	_paths = s_ll_create();
 
 	printf("START\n");
-	select("CREATE TABLE IF NOT EXISTS test("
-	       "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,"
-	       "c1 VARCHAR(25) NOT NULL, "
-	       "c2 VARCHAR(25) NOT NULL, "
-	       "c3 VARCHAR(25)"
-	       ");");
-	select("CREATE TABLE IF NOT EXISTS example("
-	       "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL"
-	       ");");
-	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three');");
-	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three');");
-	// select("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', NULL);");
-	printf("Rows affected: %d\n", select("UPDATE test SET c1='One', c2='One', c3='One' WHERE id=3;"));
-	printf("Rows affected: %d\n", select("SELECT * FROM test;"));
-	// printf("Rows affected: %d\n", select2("SELECT * FROM test;"));
-	// printf("Rows affected: %d\n", select("SELECT c1 FROM example;"));
-	// printf("Rows affected: %d\n", select2("SELECT c1 FROM example;"));
+	// sqlite_exec("CREATE TABLE IF NOT EXISTS test("
+	//        "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,"
+	//        "c1 VARCHAR(25) NOT NULL, "
+	//        "c2 VARCHAR(25) NOT NULL, "
+	//        "c3 VARCHAR(25)"
+	//        ");");
+	// sqlite_exec("CREATE TABLE IF NOT EXISTS example("
+	//        "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL"
+	//        ");");
+	// sqlite_exec("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three');");
+	// sqlite_exec("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three');");
+	// sqlite_exec("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', NULL);");
+	sqlite_exec("UPDATE test SET c1='One', c2='One', c3='One' WHERE id=3;");
+	// sqlite_exec("SELECT * FROM test;");
+	// select_debug("SELECT * FROM test;");
+	// sqlite_exec("SELECT c1 FROM example;");
+	// select_debug("SELECT c1 FROM example;");
 	printf("END\n");
 
 	exit(EXIT_SUCCESS);
