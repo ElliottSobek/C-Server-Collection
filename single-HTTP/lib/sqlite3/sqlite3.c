@@ -3,12 +3,14 @@
 #include <strings.h>
 #include <sqlite3.h>
 
+#include "../../globals.h"
 #include "../types/types.h"
 #include "../colors/colors.h"
 
-#define KBYTE_S 1024
+static int result_set(void *unused, int col_num, char **row_value, char **col_name) {
+    if (!verbose_flag)
+        return -1;
 
-static int result_set(void *unused, const int col_num, char **row_value, char **col_name) {
     printf("| %s |", row_value[0] ? row_value[0]: "NULL");
 
     for (int i = 1; i < col_num; i++)
@@ -46,7 +48,7 @@ static void print_rows(const int rows, sqlite3_stmt *sql_byte_code) {
     } while(result == SQLITE_ROW);
 }
 
-int select2(const String const restrict stmt) {
+int select_debug(const String const restrict stmt) {
     sqlite3 *db;
     sqlite3_stmt *sql_byte_code;
     int result_code = sqlite3_open("database/db.sqlite3", &db);
@@ -58,7 +60,8 @@ int select2(const String const restrict stmt) {
     result_code = sqlite3_prepare_v2(db, stmt, KBYTE_S * 2, &sql_byte_code, NULL);
 
     if (result_code != SQLITE_OK) {
-        fprintf(stderr, YELLOW "SQL error: %s\n" RESET, sqlite3_errmsg(db));
+        if (verbose_flag)
+            fprintf(stderr, YELLOW "SQL error: %s\n" RESET, sqlite3_errmsg(db));
         sqlite3_finalize(sql_byte_code);
         sqlite3_close(db);
         return -1;
@@ -68,16 +71,19 @@ int select2(const String const restrict stmt) {
     print_headers(rows, sql_byte_code);
     print_rows(rows, sql_byte_code);
     sqlite3_finalize(sql_byte_code);
-    const int rows_affected = sqlite3_changes(db);
-
     sqlite3_close(db);
 
-    return rows_affected;
+    return 0;
 }
 
-// printf("This is sqlite3_data_count: %d\n", sqlite3_data_count(res));
-// printf("This is sqlite3_column_count: %d\n", rows);
-int select(const String const restrict stmt) {
+// NOTE: char &sql = "SELECT * FROM Cars WHERE Id = @id;";
+// char *sql = "SELECT * FRMO Cars WHERE Id = ?;";
+// rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+//  if (rc == SQLITE_OK)
+//      sqlite3_bind_int(res, 1, 3);
+//  else
+//      fprintf(stderr, "Failed to execute statement: %s\n", sqlite3_errmsg(db));
+int sqlite_exec(const String const restrict stmt) {
     sqlite3 *db;
     String err_msg;
     int result_code = sqlite3_open("database/db.sqlite3", &db);
@@ -89,18 +95,21 @@ int select(const String const restrict stmt) {
 
     if (strncasecmp("SELECT", stmt, 6) == 0)
         result_code = sqlite3_exec(db, stmt, result_set, NULL, &err_msg);
-    else
+    else {
         result_code = sqlite3_exec(db, stmt, NULL, NULL, &err_msg);
 
+        if (verbose_flag)
+            printf("Rows affected: %d\n", sqlite3_changes(db));
+    }
+
     if (result_code != SQLITE_OK) {
-        fprintf(stderr, YELLOW "SQL error: %s\n" RESET, err_msg);
+        if (verbose_flag)
+            fprintf(stderr, YELLOW "SQL error: %s\n" RESET, err_msg);
         sqlite3_free(err_msg);
         sqlite3_close(db);
         return -1;
     }
-    const int rows_affected = sqlite3_changes(db);
-
     sqlite3_close(db);
 
-    return rows_affected;
+    return 0;
 }
