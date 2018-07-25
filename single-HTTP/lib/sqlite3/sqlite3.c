@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 #include <sqlite3.h>
 
@@ -75,6 +76,129 @@ int select_debug(const String const restrict stmt) {
 
     return 0;
 }
+
+char *prepare(const char *const stmt) {
+    char *prepare_stmt = strdup(stmt);
+    char result[1024] = "";
+    char char_holder[2] = {'\0', '\0'};
+    const size_t prepare_stmt_len = strlen(stmt);
+    bool spacing = false;
+
+    for (unsigned int i = 0; i < prepare_stmt_len; i++) {
+        if (prepare_stmt[i] == ' ') {
+            if (!spacing) {
+                strcat(result, " ");
+                spacing = true;
+            }
+            if (prepare_stmt[i + 1] != ' ')
+                spacing = false;
+            continue;
+        }
+        if (prepare_stmt[i] == '%') {
+            strcat(result, "?");
+            i++;
+            continue;
+        }
+        char_holder[0] = prepare_stmt[i];
+
+        strcat(result, char_holder);
+    }
+
+    printf("X: %s\n", result);
+
+    return NULL;
+}
+
+// char *reduce(const char *const snipet) {
+//     char snip[255];
+//     strcpy(snip, snipet);
+//     printf("%s\n", snip);
+//     // const char *token = strtok(snip, "%");
+//     // char *result;
+//     // return strdup(result);
+//     return NULL;
+// }
+
+// char *prepare(const char *const stmt) {
+//     char stmt2[1024];
+//     strcpy(stmt2, stmt);
+//     char *stmt2_copy = stmt2;
+//     char prepare_stmt[1024] = "";
+//     const char *token = strtok_r(stmt2_copy, " ", &stmt2_copy);
+//     const char *token2;
+//     // unsigned int index;
+//     // char tmp1[255] = "";
+
+//     strcat(prepare_stmt, token);
+//     printf("%s", token);
+//     token = strtok_r(NULL, " ", &stmt2_copy);
+
+//     while (token) {
+//         token2 = strchr(token, '%');
+
+//         if (token2) {
+//             // strcat(prepare_stmt, " ");
+//             printf("\nThis is token before: %s\n", token);
+//             reduce(token);
+//             printf("\nThis is token after: %s\n", token);
+//             ;
+//         }
+//         printf(" %s", token);
+//         strcat(prepare_stmt, " ");
+//         strcat(prepare_stmt, token);
+//         token = strtok_r(NULL,  "", &stmt2_copy);
+//     }
+
+//     return NULL;
+// }
+
+// char *prepare(const char *const stmt) {
+//     const char *search_str = strchr(stmt, '%');
+//     char parameter_stmt[KBYTE_S] = "";
+//     unsigned int prev = 0, index;
+//     bool offset = false;
+
+//     if (!search_str)
+//         return NULL;
+
+//     while (search_str) {
+//         index = search_str - stmt;
+
+//         printf("Prev going in: %d\n", prev);
+//         for (unsigned int i = 0; i <= index - prev; i++) {
+
+//             if (stmt[prev] == '%') {
+//                 prev++;
+//                 offset = true;
+//             }
+//             if (offset) {
+//                 printf("-%c-\n", parameter_stmt[prev + i - 1]);
+//                 printf("-%c-\n", parameter_stmt[prev + i]);
+//                 printf("-%c-\n", parameter_stmt[prev + i + 1]);
+//                 printf("-%c-\n", stmt[prev + i]);
+//                 printf("-%c-\n", stmt[prev + i + 1]);
+//                 printf("-%c-\n", stmt[prev + i + 2]);
+//                 printf("This is parameter_stmt char in offset: -%c- and index: %d\n", parameter_stmt[prev + i], prev + i);
+//                 printf("This is stmt char in offset: -%c- and index: %d\n", stmt[prev + i + 1], prev + i + 2);
+//                 // parameter_stmt[prev + i] = stmt[prev + i + 2];
+//                 i++;
+//                 offset = false;
+//             } else {
+//                 printf("This is parameter_stmt char: -%c- and index: %d\n", parameter_stmt[prev + i], prev + i);
+//                 printf("This is stmt char: -%c- and index: %d\n", stmt[prev + i], prev + i);
+//                 parameter_stmt[prev + i] = stmt[prev + i];
+//             }
+//         }
+
+//         parameter_stmt[index] = '?';
+//         parameter_stmt[index + 1] = '\0';
+//         search_str = strchr(++search_str, '%');
+//         prev = index;
+//     }
+//     strncat(parameter_stmt, ";", 1);
+//     printf("This is parameter_stmt: %s\n", parameter_stmt);
+//     return strndupa(parameter_stmt, KBYTE_S);
+// }
 
 // NOTE: char &sql = "SELECT * FROM Cars WHERE Id = @id;";
 // char *sql = "SELECT * FRMO Cars WHERE Id = ?;";

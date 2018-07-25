@@ -3,6 +3,7 @@
 
 #include "../types/types.h"
 
+extern char *prepare(const char *const);
 extern int sqlite_exec(const String const restrict);
 extern int select_debug(const String const restrict);
 

@@ -4,7 +4,7 @@ CC := gcc
 
 CFLAGS := -Wall -Wextra -pedantic -Wno-unused-parameter \
 		  -Wno-unused-but-set-parameter -Werror -std=c99 \
-		  -D_POSIX_C_SOURCE=200809L
+		  -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE
 
 LDLIBS := -lsqlite3
 
