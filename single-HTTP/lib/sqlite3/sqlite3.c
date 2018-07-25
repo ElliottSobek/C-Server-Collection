@@ -82,18 +82,8 @@ char *prepare(const char *const stmt) {
     char result[1024] = "";
     char char_holder[2] = {'\0', '\0'};
     const size_t prepare_stmt_len = strlen(stmt);
-    bool spacing = false;
 
     for (unsigned int i = 0; i < prepare_stmt_len; i++) {
-        if (prepare_stmt[i] == ' ') {
-            if (!spacing) {
-                strcat(result, " ");
-                spacing = true;
-            }
-            if (prepare_stmt[i + 1] != ' ')
-                spacing = false;
-            continue;
-        }
         if (prepare_stmt[i] == '%') {
             strcat(result, "?");
             i++;
@@ -104,7 +94,7 @@ char *prepare(const char *const stmt) {
         strcat(result, char_holder);
     }
 
-    printf("X: %s\n", result);
+    printf("%s\n", result);
 
     return NULL;
 }
