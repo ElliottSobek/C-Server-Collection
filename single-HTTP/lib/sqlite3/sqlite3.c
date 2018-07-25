@@ -87,11 +87,11 @@ char *prepare(const char *const stmt) {
         if (prepare_stmt[i] == '%') {
             strcat(result, "?");
             i++;
-            continue;
-        }
-        char_holder[0] = prepare_stmt[i];
+        } else {
+            char_holder[0] = prepare_stmt[i];
 
-        strcat(result, char_holder);
+            strcat(result, char_holder);
+        }
     }
 
     printf("%s\n", result);
