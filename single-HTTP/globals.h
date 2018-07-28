@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <linux/limits.h>
 
 #define BYTE_S 1L
 #define KBYTE_S 1024L
@@ -11,5 +12,6 @@
 #define NT_LEN 1
 
 bool verbose_flag;
+char _log_root[PATH_MAX];
 
 #endif /* End GLOBALS_H */
