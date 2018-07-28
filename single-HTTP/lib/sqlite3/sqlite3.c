@@ -77,7 +77,7 @@ int select_debug(const String const restrict stmt) {
     return 0;
 }
 
-char *prepare(const char *const stmt) {
+static char *prepare(const char *const restrict stmt) {
     const size_t prepare_stmt_len = strlen(stmt);
     char prepare_stmt[KBYTE_S * 2];
     char result[KBYTE_S] = "";
@@ -92,7 +92,7 @@ char *prepare(const char *const stmt) {
             result[j] = prepare_stmt[i];
     }
 
-    return NULL;
+    return strdupa(result);
 }
 
 // NOTE: char &sql = "SELECT * FROM Cars WHERE Id = @id;";
@@ -111,6 +111,9 @@ int sqlite_exec(const String const restrict stmt) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
         exit(EXIT_FAILURE);
     }
+
+    char *bob = prepare(stmt);
+    printf("Bob: %s\n", bob);
 
     if (strncasecmp("SELECT", stmt, 6) == 0)
         result_code = sqlite3_exec(db, stmt, result_set, NULL, &err_msg);
