@@ -16,6 +16,7 @@
 #include <linux/limits.h>
 
 #include "globals.h"
+#include "lib/logging/log.h"
 #include "lib/types/types.h"
 #include "lib/colors/colors.h"
 #include "lib/sqlite3/sqlite3.h"
@@ -51,7 +52,6 @@
 
 #define MSG_LEN 4096
 #define PORT_LEN 5
-#define FTIME_MLEN 25
 #define GET_REQ_LEN 3
 #define PHP_EXT_LEN 4
 #define REQLINE_LEN 128
@@ -68,13 +68,11 @@
 #define HTTP_METHOD_LEN 7
 #define DEFAULT_PAGE_LEN 22
 #define MDEFAULT_PAGE_LEN 2
-#define FF_TIME_PATH_MLEN 19
 #define IMPLEMENTED_HTTP_METHODS_LEN 2
 
 S_Ll _paths;
 char _port[PORT_LEN] = DEFAULT_PORT,
-	 _doc_root[PATH_MAX] = DEFAULT_ROOT,
-	 _log_root[PATH_MAX] = DEFAULT_LOG_ROOT;
+	 _doc_root[PATH_MAX] = DEFAULT_ROOT;
 
 bool sigint_flag = true;
 
@@ -196,49 +194,6 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 			exit(EXIT_FAILURE);
 		}
 	}
-}
-
-void server_log(const String const msg) { // Done
-	const mode_t mode_d = 0770, mode_f = 0660;
-	const time_t cur_time = time(NULL);
-	String log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		f_time = (String) malloc((FTIME_MLEN + NT_LEN) * sizeof(char));
-	char ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
-	const struct tm *const t_data = localtime(&cur_time);
-
-	if (!log_dir || !f_time) {
-		fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-
-	strftime(f_time, FTIME_MLEN, "%a %b %d %T %Y", t_data);
-	strftime(ff_time_path, 10, "logs/%Y", t_data);
-	mkdir(ff_time_path, mode_d);
-
-	strftime(ff_time_path, 14, "logs/%Y/%b", t_data);
-	mkdir(ff_time_path, mode_d);
-
-	strftime(ff_time_path, 17, "logs/%Y/%b/%U", t_data);
-	mkdir(ff_time_path, mode_d);
-
-	strftime(ff_time_path, 20, "%Y/%b/%U/%a.log", t_data);
-	snprintf(log_dir, PATH_MAX, "%s%s", _log_root, ff_time_path);
-
-	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
-
-	if ((fd == -1) && (verbose_flag))
-		printf(YELLOW "Logging File Error: %s\n" RESET, strerror(errno));
-	else
-		dprintf(fd, "[%s]: %s\n", f_time, msg);
-
-	if ((close(fd) == -1) && (verbose_flag))
-		printf(YELLOW "Logging File Descriptor Error: %s\n" RESET, strerror(errno));
-
-	free(f_time);
-	f_time = NULL;
-
-	free(log_dir);
-	log_dir = NULL;
 }
 
 void process_php(const int client_fd, const String const file_path) { // Done
@@ -578,6 +533,7 @@ int main(const int argc, String *const argv) {
 
 	verbose_flag = true;
 	_paths = s_ll_create();
+	strncpy(_log_root, DEFAULT_LOG_ROOT, PATH_MAX);
 
 	// sqlite_exec("CREATE TABLE IF NOT EXISTS test("
 	//        "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,"
