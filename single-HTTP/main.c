@@ -49,7 +49,6 @@
 #define HTTP_REQ_AMT 8
 #define REQLINE_TOKEN_AMT 3
 
-#define NT_LEN 1
 #define MSG_LEN 4096
 #define PORT_LEN 5
 #define FTIME_MLEN 25
@@ -580,7 +579,6 @@ int main(const int argc, String *const argv) {
 	verbose_flag = true;
 	_paths = s_ll_create();
 
-	prepare("SELECT * FROM test WHERE id=%d AND c1=%s;");
 	// sqlite_exec("CREATE TABLE IF NOT EXISTS test("
 	//        "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,"
 	//        "c1 VARCHAR(25) NOT NULL, "
