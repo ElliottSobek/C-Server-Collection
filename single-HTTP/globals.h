@@ -8,6 +8,8 @@
 #define KBYTE_S 1024L
 #define MBYTE_S ((uint64_t) (KBYTE_S * KBYTE_S))
 
+#define NT_LEN 1
+
 bool verbose_flag;
 
 #endif /* End GLOBALS_H */
