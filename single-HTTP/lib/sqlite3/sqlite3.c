@@ -81,22 +81,16 @@ char *prepare(const char *const stmt) {
     const size_t prepare_stmt_len = strlen(stmt);
     char prepare_stmt[KBYTE_S * 2];
     char result[KBYTE_S] = "";
-    char char_holder[2] = {'\0', '\0'};
 
     strncpy(prepare_stmt, stmt, prepare_stmt_len + NT_LEN);
 
-    for (unsigned int i = 0; i < prepare_stmt_len; i++) {
+    for (unsigned int i = 0, j = 0; i < prepare_stmt_len; i++, j++) {
         if (prepare_stmt[i] == '%') {
-            strcat(result, "?");
+            result[j] = '?';
             i++;
-        } else {
-            char_holder[0] = prepare_stmt[i];
-
-            strcat(result, char_holder);
-        }
+        } else
+            result[j] = prepare_stmt[i];
     }
-
-    printf("%s\n", result);
 
     return NULL;
 }
