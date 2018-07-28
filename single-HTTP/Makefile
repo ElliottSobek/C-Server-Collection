@@ -10,7 +10,7 @@ LDLIBS := -lsqlite3
 
 SUBDIRS := lib
 
-OBJECTS := main.o hashtable.o s_linked_list.o sqlite3.o
+OBJECTS := main.o hashtable.o s_linked_list.o sqlite3.o log.o
 
 VPATH := $(shell echo `./getpaths.bash $(SUBDIRS)`)
 
