@@ -548,10 +548,11 @@ int main(const int argc, String *const argv) {
 	// sqlite_exec("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three');");
 	// sqlite_exec("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', NULL);");
 	// sqlite_exec("UPDATE test SET c1='One', c2='One', c3='One' WHERE id=3;");
-	// sqlite_exec("SELECT * FROM test;");
+	sqlite_exec("SELECT * FROM test;");
 	// select_debug("SELECT * FROM test;");
 	// sqlite_exec("SELECT c1 FROM example;");
 	// select_debug("SELECT c1 FROM example;");
+	// sqlite_exec("SELECT * FROM test WHERE id=%d;");
 	printf("\n");
 
 	exit(EXIT_SUCCESS);
