@@ -524,123 +524,98 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 }
 
 int main(const int argc, String *const argv) {
-	// char ipv4_address[INET_ADDRSTRLEN];
-	// int masterfd, newfd;
-	// struct addrinfo addressinfo, *serviceinfo;
-	// struct sockaddr client_addr;
-	// socklen_t sin_size = sizeof(client_addr);
-	// const mode_t mode_d = 0770;
+	char ipv4_address[INET_ADDRSTRLEN];
+	int masterfd, newfd;
+	struct addrinfo addressinfo, *serviceinfo;
+	struct sockaddr client_addr;
+	socklen_t sin_size = sizeof(client_addr);
+	const mode_t mode_d = 0770;
 
 	verbose_flag = true;
+	_paths = s_ll_create();
+	strncpy(_log_root, DEFAULT_LOG_ROOT, PATH_MAX);
 
-	// sqlite_exec("CREATE TABLE IF NOT EXISTS test("
-	//        "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL,"
-	//        "c1 VARCHAR(25) NOT NULL, "
-	//        "c2 VARCHAR(25) NOT NULL, "
-	//        "c3 VARCHAR(25)"
-	//        ");");
-	// sqlite_exec("CREATE TABLE IF NOT EXISTS example("
-	//        "id INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE NOT NULL"
-	//        ");");
-	// sqlite_exec("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three');");
-	// sqlite_exec("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', 'Three');");
-	// sqlite_exec("INSERT INTO test (c1, c2, c3) VALUES('One', 'Two', NULL);");
-	// sqlite_exec("UPDATE test SET c1='One', c2='One', c3='One' WHERE id=3;");
-	// sqlite_exec("SELECT * FROM test;");
-	// puts("\n");
-	// select_debug("SELECT * FROM test;");
-	// sqlite_exec("SELECT c1 FROM example;");
-	// select_debug("SELECT c1 FROM example;");
-	sqlite_exec("SELECT * FROM test WHERE id=%d;");
-	puts("Done\n");
+	init_signals();
+	if (argc > MAX_ARGS) {
+		printf(USAGE_MSG, basename(argv[0]));
+		exit(EXIT_FAILURE);
+	}
+	compute_flags(argc, argv, &verbose_flag);
+	if (!is_valid_port()) {
+		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
+		exit(EXIT_FAILURE);
+	}
 
-	return 0;
+	if ((mkdir(_log_root, mode_d) == -1) && (verbose_flag))
+		if (errno != EEXIST) {
+			printf("Log Directory Error: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 
-	// verbose_flag = true;
-	// _paths = s_ll_create();
-	// strncpy(_log_root, DEFAULT_LOG_ROOT, PATH_MAX);
+	init_addrinfo(&addressinfo);
 
-	// init_signals();
-	// if (argc > MAX_ARGS) {
-	// 	printf(USAGE_MSG, basename(argv[0]));
-	// 	exit(EXIT_FAILURE);
-	// }
-	// compute_flags(argc, argv, &verbose_flag);
-	// if (!is_valid_port()) {
-	// 	fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
-	// 	exit(EXIT_FAILURE);
-	// }
+	if (getaddrinfo(NULL, _port, &addressinfo, &serviceinfo) != 0) {
+		fprintf(stderr, RED "Get Address Info Error: %s\n" RESET, gai_strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 
-	// if ((mkdir(_log_root, mode_d) == -1) && (verbose_flag))
-	// 	if (errno != EEXIST) {
-	// 		printf("Log Directory Error: %s\n", strerror(errno));
-	// 		exit(EXIT_FAILURE);
-	// 	}
+	if (get_socket(&masterfd, serviceinfo) == -1)
+		exit(EXIT_FAILURE);
 
-	// init_addrinfo(&addressinfo);
+	if (listen(masterfd, BACKLOG) == -1) {
+		fprintf(stderr, RED "Listen Error: %s\n" RESET, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 
-	// if (getaddrinfo(NULL, _port, &addressinfo, &serviceinfo) != 0) {
-	// 	fprintf(stderr, RED "Get Address Info Error: %s\n" RESET, gai_strerror(errno));
-	// 	exit(EXIT_FAILURE);
-	// }
+	init_url_paths();
 
-	// if (get_socket(&masterfd, serviceinfo) == -1)
-	// 	exit(EXIT_FAILURE);
+	String msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
 
-	// if (listen(masterfd, BACKLOG) == -1) {
-	// 	fprintf(stderr, RED "Listen Error: %s\n" RESET, strerror(errno));
-	// 	exit(EXIT_FAILURE);
-	// }
+	if (!msg) {
+		fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 
-	// init_url_paths();
+	if (verbose_flag)
+		printf(GREEN "Initialization: SUCCESS;\n"
+		       "Listening on port: %s\n"
+		       "root is: %s\n"
+		       "log root is: %s\n" RESET, _port, _doc_root, _log_root);
 
-	// String msg = (String) malloc((MSG_LEN + NT_LEN) * sizeof(char));
+	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 
-	// if (!msg) {
-	// 	fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
-	// 	exit(EXIT_FAILURE);
-	// }
+	while (sigint_flag) {
+		_doc_root[default_root_len] = '\0';
+		newfd = accept(masterfd, &client_addr, &sin_size);
 
-	// if (verbose_flag)
-	// 	printf(GREEN "Initialization: SUCCESS;\n"
-	// 	       "Listening on port: %s\n"
-	// 	       "root is: %s\n"
-	// 	       "log root is: %s\n" RESET, _port, _doc_root, _log_root);
+		if (newfd == -1) {
+			const String const err_msg = strerror(errno);
 
-	// const int default_root_len = strnlen(_doc_root, PATH_MAX);
+			if (verbose_flag)
+				printf(YELLOW "Accept Error: %s\n" RESET, err_msg);
+			server_log(err_msg);
+			continue;
+		}
 
-	// while (sigint_flag) {
-	// 	_doc_root[default_root_len] = '\0';
-	// 	newfd = accept(masterfd, &client_addr, &sin_size);
+		inet_ntop(AF_INET, &(((struct sockaddr_in*)&client_addr)->sin_addr), ipv4_address, INET_ADDRSTRLEN);
 
-	// 	if (newfd == -1) {
-	// 		const String const err_msg = strerror(errno);
+		if (recv(newfd, msg, MSG_LEN, 0) > 0)
+			process_request(newfd, msg, ipv4_address);
+		else {
+			const String const err_msg = strerror(errno);
 
-	// 		if (verbose_flag)
-	// 			printf(YELLOW "Accept Error: %s\n" RESET, err_msg);
-	// 		server_log(err_msg);
-	// 		continue;
-	// 	}
+			if (verbose_flag)
+				printf(YELLOW "Inboud Data Read Error: %s\n" RESET, err_msg);
+			server_log(err_msg);
+		}
+	}
+	s_ll_destroy(_paths);
 
-	// 	inet_ntop(AF_INET, &(((struct sockaddr_in*)&client_addr)->sin_addr), ipv4_address, INET_ADDRSTRLEN);
+	if ((close(masterfd) == -1) && (verbose_flag))
+		printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
+	free(msg);
+	msg = NULL;
 
-	// 	if (recv(newfd, msg, MSG_LEN, 0) > 0)
-	// 		process_request(newfd, msg, ipv4_address);
-	// 	else {
-	// 		const String const err_msg = strerror(errno);
-
-	// 		if (verbose_flag)
-	// 			printf(YELLOW "Inboud Data Read Error: %s\n" RESET, err_msg);
-	// 		server_log(err_msg);
-	// 	}
-	// }
-	// s_ll_destroy(_paths);
-
-	// if ((close(masterfd) == -1) && (verbose_flag))
-	// 	printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
-	// free(msg);
-	// msg = NULL;
-
-	// return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
 
