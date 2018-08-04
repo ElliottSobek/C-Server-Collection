@@ -111,7 +111,7 @@ static void print_rows(const int rows, sqlite3_stmt *sql_byte_code) {
 int sqlite_exec(const String const restrict stmt, ...) {
     sqlite3 *db;
     sqlite3_stmt *sql_byte_code;
-    int result_code = sqlite3_open("database/db.sqlite3", &db);
+    int result_code = sqlite3_open(_db_path, &db);
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
