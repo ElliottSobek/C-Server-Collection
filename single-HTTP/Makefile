@@ -4,11 +4,13 @@ CC := gcc
 
 CFLAGS := -Wall -Wextra -pedantic -Wno-unused-parameter \
 		  -Wno-unused-but-set-parameter -Werror -std=c99 \
-		  -D_POSIX_C_SOURCE=200809L
+		  -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE
+
+LDLIBS := -lsqlite3
 
 SUBDIRS := lib
 
-OBJECTS := main.o hashtable.o s_linked_list.o
+OBJECTS := main.o hashtable.o s_linked_list.o sqlite3.o log.o
 
 VPATH := $(shell echo `./getpaths.bash $(SUBDIRS)`)
 
@@ -25,13 +27,13 @@ endif
 .PHONY: debug profile production clean
 
 debug: $(OBJECTS)
-	$(CC) $(CFLAGS) $^ -o single-HTTP-debug
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o single-HTTP-debug
 
 profile: $(OBJECTS)
-	$(CC) $(CFLAGS) $^ -o single-HTTP-profile
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o single-HTTP-profile
 
 production: $(OBJECTS)
-	$(CC) $(CFLAGS) $^ -o single-HTTP
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o single-HTTP
 
 $(OBJECTS):
 
