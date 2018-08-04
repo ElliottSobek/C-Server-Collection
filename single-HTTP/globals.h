@@ -12,6 +12,6 @@
 #define NT_LEN 1
 
 bool verbose_flag;
-char _log_root[PATH_MAX + NT_LEN];
+char _log_root[PATH_MAX + NT_LEN], _db_path[PATH_MAX + NT_LEN];
 
 #endif /* End GLOBALS_H */
