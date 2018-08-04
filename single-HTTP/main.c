@@ -34,6 +34,7 @@
 
 #define DEFAULT_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/"
 #define DEFAULT_LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
+#define DEFAULT_DB_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/database/db.sqlite3"
 
 #define DEFAULT_HT_S 10
 #define DEFAULT_PORT "8888"
@@ -145,6 +146,7 @@ void load_configuration(const String const path) { // Done
 		strncpy(_port, ht_get_value(hashtable, "port"), PORT_LEN);
 		strncpy(_doc_root, ht_get_value(hashtable, "document_root"), PATH_MAX);
 		strncpy(_log_root, ht_get_value(hashtable, "log_root"), PATH_MAX);
+		strncpy(_db_path, ht_get_value(hashtable, "database_path"), PATH_MAX);
 		ht_destroy(hashtable);
 	}
 	if ((fclose(conf_f) != 0) && (verbose_flag))
@@ -534,12 +536,14 @@ int main(const int argc, String *const argv) {
 	verbose_flag = true;
 	_paths = s_ll_create();
 	strncpy(_log_root, DEFAULT_LOG_ROOT, PATH_MAX);
+	strncpy(_db_path, DEFAULT_DB_ROOT, PATH_MAX);
 
 	init_signals();
 	if (argc > MAX_ARGS) {
 		printf(USAGE_MSG, basename(argv[0]));
 		exit(EXIT_FAILURE);
 	}
+
 	compute_flags(argc, argv, &verbose_flag);
 	if (!is_valid_port()) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
