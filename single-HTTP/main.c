@@ -409,7 +409,8 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 		if (bind(*socketfd, p->ai_addr, p->ai_addrlen) == -1) {
 			if (verbose_flag)
 				printf(YELLOW "Bind Error: %s\n" RESET, strerror(errno));
-			close(*socketfd);
+			if ((close(*socketfd) == -1) && (verbose_flag))
+				printf(YELLOW "Bind File Descriptor Error: %s\n" RESET, strerror(errno));
 			continue;
 		}
 
