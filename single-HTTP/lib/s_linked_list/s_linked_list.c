@@ -10,8 +10,8 @@
 #define NT_LEN 1
 #define STR_MAX 2048
 
-static S_Ll_Node create_node(const String const restrict regex, const String const restrict path) {
-	const S_Ll_Node const restrict node = (S_Ll_Node) malloc(sizeof(s_ll_node_t));
+static S_Ll_Node create_node(const String restrict regex, const String restrict path) {
+	const S_Ll_Node restrict node = (S_Ll_Node) malloc(sizeof(s_ll_node_t));
 	if (!node)
 		exit(EXIT_FAILURE);
 
@@ -36,7 +36,7 @@ static S_Ll_Node create_node(const String const restrict regex, const String con
 	return node;
 }
 
-static S_Ll_Node find_prev_node(S_Ll_Node const list, const String const restrict regex) {
+static S_Ll_Node find_prev_node(S_Ll_Node const list, const String restrict regex) {
 	const size_t regex_len = strnlen(regex, STR_MAX);
 	S_Ll_Node restrict prev = NULL;
 	S_Ll_Node cur = list;
@@ -51,7 +51,7 @@ static S_Ll_Node find_prev_node(S_Ll_Node const list, const String const restric
 	return NULL;
 }
 
-S_Ll_Node s_ll_find(const S_Ll const restrict list, const String const restrict regex) {
+S_Ll_Node s_ll_find(const S_Ll restrict list, const String restrict regex) {
 	const size_t regex_len = strnlen(regex, STR_MAX);
 	S_Ll_Node cur = list->root;
 
@@ -64,8 +64,8 @@ S_Ll_Node s_ll_find(const S_Ll const restrict list, const String const restrict 
 	return NULL;
 }
 
-void s_ll_insert(const S_Ll const restrict list, const String const restrict regex, const String const restrict path) {
-	const S_Ll_Node const new_node = create_node(regex, path);
+void s_ll_insert(const S_Ll restrict list, const String restrict regex, const String restrict path) {
+	const S_Ll_Node new_node = create_node(regex, path);
 	S_Ll_Node node = list->root;
 
 	if (!node) {
@@ -79,11 +79,11 @@ void s_ll_insert(const S_Ll const restrict list, const String const restrict reg
 	node->next = new_node;
 }
 
-int s_ll_remove(const S_Ll const restrict list, const String const restrict regex) {
+int s_ll_remove(const S_Ll restrict list, const String restrict regex) {
 	if (!s_ll_find(list, regex))
 		return -1;
 
-	const S_Ll_Node const root = list->root, prev = find_prev_node(root, regex);
+	const S_Ll_Node root = list->root, prev = find_prev_node(root, regex);
 	S_Ll_Node restrict delete_node;
 
 	if (!prev) {
@@ -129,13 +129,13 @@ void s_ll_destroy(S_Ll restrict list) {
 	list = NULL;
 }
 
-void s_ll_print(const S_Ll const restrict list) {
+void s_ll_print(const S_Ll restrict list) {
 	for (S_Ll_Node node = list->root; node; node = node->next)
 		printf("%s:%s\n", node->regex, node->path);
 }
 
 S_Ll s_ll_create(void) {
-	const S_Ll const restrict list = (S_Ll) malloc(sizeof(S_Ll));
+	const S_Ll restrict list = (S_Ll) malloc(sizeof(S_Ll));
 	list->root = NULL;
 
 	return list;

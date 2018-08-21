@@ -18,8 +18,8 @@ typedef s_ll_t *S_Ll;
 
 extern S_Ll s_ll_create(void);
 extern void s_ll_destroy(S_Ll);
-extern void s_ll_insert(S_Ll, const String const, const String const);
-extern S_Ll_Node s_ll_find(S_Ll const, const String const);
+extern void s_ll_insert(S_Ll, const String, const String);
+extern S_Ll_Node s_ll_find(S_Ll const, const String);
 extern void s_ll_print(S_Ll);
 
 #endif /* End S_LINKED_LIST_H */

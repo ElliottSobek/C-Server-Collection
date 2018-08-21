@@ -39,7 +39,7 @@
 #define DEFAULT_HT_S 10
 #define DEFAULT_PORT "8888"
 #define CONNECTION_TEMPLATE "Connection from %s for file %s"
-#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
+#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-d[filename]] [-l <filepath>] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -84,7 +84,7 @@ bool is_valid_port(void) { // Done
 }
 
 bool is_valid_request(String *const reqline) { // Done
-	const String const restrict http_methods[HTTP_REQ_AMT] = {
+	const String restrict http_methods[HTTP_REQ_AMT] = {
 		"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE"
 	};
 
@@ -92,7 +92,7 @@ bool is_valid_request(String *const reqline) { // Done
 		if (strncmp(reqline[0], http_methods[i], strnlen(http_methods[i], STR_MAX)) == 0)
 			return true;
 
-	const String const restrict http_ver[HTTP_VER_AMT] = {"HTTP/1.0", "HTTP/1.1", "HTTP/2.0"};
+	const String restrict http_ver[HTTP_VER_AMT] = {"HTTP/1.0", "HTTP/1.1", "HTTP/2.0"};
 
 	for (int i = 0; i < HTTP_VER_AMT; i++)
 		if (strncmp(reqline[2], http_ver[i], strnlen(http_ver[i], STR_MAX)) == 0)
@@ -115,7 +115,7 @@ String clean_config_line(String string) { // Done
 	return string;
 }
 
-void load_configuration(const String const path) { // Done
+void load_configuration(const String path) { // Done
 	const String extension = strrchr(path, '.');
 
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
@@ -158,16 +158,24 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	uid_t euid;
 	gid_t egid;
 
-	while ((c = getopt(argc, argv, ":hVvs:g:u:")) != -1) {
+	while ((c = getopt(argc, argv, "d::hl:Vvs:g:u:")) != -1) { // : at the start?
 		switch (c) {
 		case 'h':
 			printf(USAGE_MSG
+			       "-d\tDump the entire database or a specified table to a file\n"
+			       "-l\tLoad a database fixture\n"
 				   "-h\tHelp menu\n"
 				   "-V\tVersion\n"
 				   "-v\tVerbose\n"
 				   "-s\tLoad a configuration file\n"
 				   "-u\tSet the effective user id for the process\n"
 				   "-g\tSet the effective group if for the process\n", basename(argv[0]));
+			exit(EXIT_SUCCESS);
+		case 'd':
+			puts("In d");
+			exit(EXIT_SUCCESS);
+		case 'l':
+			puts("In l");
 			exit(EXIT_SUCCESS);
 		case 'V':
 			printf("Version 0.5\n");
@@ -198,11 +206,11 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	}
 }
 
-void process_php(const int client_fd, const String const file_path) { // Done
+void process_php(const int client_fd, const String file_path) { // Done
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1) {
-		const String const err_msg = strerror(errno);
+		const String err_msg = strerror(errno);
 
 		if (verbose_flag)
 			printf(YELLOW "Process Forking Error: %s\n" RESET, err_msg);
@@ -217,11 +225,11 @@ void process_php(const int client_fd, const String const file_path) { // Done
 		printf(YELLOW "File Descriptor Error 3: %s\n" RESET, strerror(errno));
 }
 
-void send_file(const int client_fd, const String const path) { // Done
+void send_file(const int client_fd, const String path) { // Done
 	const int fd = open(path, O_RDONLY);
 
 	if (fd == -1) {
-		const String const err_msg = strerror(errno);
+		const String err_msg = strerror(errno);
 
 		if (verbose_flag)
 			printf(YELLOW "Serve File Error: %s\n" RESET, err_msg);
@@ -252,7 +260,7 @@ void send_file(const int client_fd, const String const path) { // Done
 		printf(YELLOW "Serve File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
-void respond(const int client_fd, String *const reqlines, const String const path) { // Done
+void respond(const int client_fd, String *const reqlines, const String path) { // Done
 	if (!is_valid_request(reqlines)) {
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqlines[0], reqlines[1]);
@@ -269,7 +277,7 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 		return;
 	}
 
-	const String const restrict implemented_http_methods[IMPLEMENTED_HTTP_METHODS_LEN] = {"GET", "POST"};
+	const String restrict implemented_http_methods[IMPLEMENTED_HTTP_METHODS_LEN] = {"GET", "POST"};
 	bool in = false;
 
 	for (unsigned int i = 0; i < IMPLEMENTED_HTTP_METHODS_LEN; i++)
@@ -444,8 +452,8 @@ void init_signals(void) { // Done
 	}
 }
 
-bool is_image(const String const restrict extension) {
-	const String const img_ext[] = {".png", ".jpg", ".jpeg", ".tiff", ".gif", ".bmp", ".svg", ".ico"};
+bool is_image(const String restrict extension) {
+	const String img_ext[] = {".png", ".jpg", ".jpeg", ".tiff", ".gif", ".bmp", ".svg", ".ico"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
 	for (unsigned int i = 0; i < img_ext_len; i++)
@@ -454,8 +462,8 @@ bool is_image(const String const restrict extension) {
 	return false;
 }
 
-bool is_audio(const String const restrict extension) {
-	const String const img_ext[] = {".wav", ".flac", ".opus", ".mp3", ".aac", ".ogg", ".pcm", ".aiff", ".wma", ".alac"};
+bool is_audio(const String restrict extension) {
+	const String img_ext[] = {".wav", ".flac", ".opus", ".mp3", ".aac", ".ogg", ".pcm", ".aiff", ".wma", ".alac"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
 	for (unsigned int i = 0; i < img_ext_len; i++)
@@ -464,8 +472,8 @@ bool is_audio(const String const restrict extension) {
 	return false;
 }
 
-bool is_video(const String const restrict extension) {
-	const String const img_ext[] = {".mp4", ".mov", ".avi", ".flv", ".wmv"};
+bool is_video(const String restrict extension) {
+	const String img_ext[] = {".mp4", ".mov", ".avi", ".flv", ".wmv"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
 	for (unsigned int i = 0; i < img_ext_len; i++)
@@ -474,8 +482,8 @@ bool is_video(const String const restrict extension) {
 	return false;
 }
 
-bool is_binary(const String const restrict extension) {
-	const String const img_ext[] = {".exe", ".img", ".bin"};
+bool is_binary(const String restrict extension) {
+	const String img_ext[] = {".exe", ".img", ".bin"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
 	for (unsigned int i = 0; i < img_ext_len; i++)
@@ -484,7 +492,7 @@ bool is_binary(const String const restrict extension) {
 	return false;
 }
 
-void process_request(const int fd, String msg, const String const ipv6_address) { // Done
+void process_request(const int fd, String msg, const String ipv6_address) { // Done
 	char con_msg[CONNECTION_TEMPLATE_LEN + PATH_MAX],
 		 **const reqlines = get_req_lines(msg);
 
@@ -498,7 +506,7 @@ void process_request(const int fd, String msg, const String const ipv6_address) 
 		send_file(fd, "partials/code-responses/400.html");
 	} else {
 		S_Ll_Node data;
-		const String const restrict extension = strrchr(reqlines[1], '.');
+		const String restrict extension = strrchr(reqlines[1], '.');
 
 		if (extension) {
 			if (strncmp(extension, ".css", CONF_EXT_LEN) == 0)
@@ -595,7 +603,7 @@ int main(const int argc, String *const argv) {
 		newfd = accept(masterfd, &client_addr, &sin_size);
 
 		if (newfd == -1) {
-			const String const err_msg = strerror(errno);
+			const String err_msg = strerror(errno);
 
 			if (verbose_flag)
 				printf(YELLOW "Accept Error: %s\n" RESET, err_msg);
@@ -608,7 +616,7 @@ int main(const int argc, String *const argv) {
 		if (recv(newfd, msg, MSG_LEN, 0) > 0)
 			process_request(newfd, msg, ipv6_address);
 		else {
-			const String const err_msg = strerror(errno);
+			const String err_msg = strerror(errno);
 
 			if (verbose_flag)
 				printf(YELLOW "Inboud Data Read Error: %s\n" RESET, err_msg);
