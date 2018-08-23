@@ -179,3 +179,14 @@ int sqlite_exec(const String restrict stmt, ...) {
 
     return 0;
 }
+
+
+void sqlite_load_exec(const String restrict filepath) {
+    FILE *fixture = fopen(filepath, "r");
+    char buf[KBYTE_S], sql_buf[MBYTE_S] = "";
+
+    while (fgets(buf, KBYTE_S, fixture))
+        strncat(sql_buf, buf, KBYTE_S);
+
+    sqlite_exec(sql_buf);
+}

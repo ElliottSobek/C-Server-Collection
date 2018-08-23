@@ -155,7 +155,7 @@ void load_configuration(const String path) { // Done
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	int c;
-	uid_t euid;
+	uid_t euid; // Move inside assign block?
 	gid_t egid;
 
 	while ((c = getopt(argc, argv, "d::hl:Vvs:g:u:")) != -1) { // : at the start?
@@ -175,7 +175,7 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 			puts("In d");
 			exit(EXIT_SUCCESS);
 		case 'l':
-			puts("In l");
+			sqlite_load_exec(optarg);
 			exit(EXIT_SUCCESS);
 		case 'V':
 			printf("Version 0.5\n");
