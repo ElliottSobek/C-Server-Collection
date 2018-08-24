@@ -190,3 +190,7 @@ void sqlite_load_exec(const String restrict filepath) {
 
     sqlite_exec(sql_buf);
 }
+
+void sqlite_dumpdata(const String *restrict bob) {
+    return;
+}

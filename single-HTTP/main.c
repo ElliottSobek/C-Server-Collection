@@ -118,10 +118,16 @@ String clean_config_line(String string) { // Done
 void load_configuration(const String path) { // Done
 	const String extension = strrchr(path, '.');
 
+	if (!extension) {
+		if (verbose_flag)
+			puts(YELLOW "File Warning: -s option was not supplied a file" RESET);
+		return;
+	}
+
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
 		if (verbose_flag)
-			printf(YELLOW "File Warning: -s option takes a configuration file as an argument\n"
-			       "Using default parameter values\n" RESET);
+			puts(YELLOW "File Warning: -s option takes a configuration file as an argument\n"
+			       "Using default parameter values" RESET);
 		return;
 	}
 
@@ -172,13 +178,13 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 				   "-g\tSet the effective group if for the process\n", basename(argv[0]));
 			exit(EXIT_SUCCESS);
 		case 'd':
-			puts("In d");
+			sqlite_dumpdata(argv);
 			exit(EXIT_SUCCESS);
 		case 'l':
 			sqlite_load_exec(optarg);
 			exit(EXIT_SUCCESS);
 		case 'V':
-			printf("Version 0.5\n");
+			puts("Version 0.6");
 			exit(EXIT_SUCCESS);
 		case 'v':
 			*v_flag = true;
