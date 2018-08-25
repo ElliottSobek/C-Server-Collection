@@ -39,7 +39,7 @@
 #define DEFAULT_HT_S 10
 #define DEFAULT_PORT "8888"
 #define CONNECTION_TEMPLATE "Connection from %s for file %s"
-#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
+#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-d[table]] [-l <filepath>] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -65,10 +65,10 @@
 #define CODE_500_LEN 36
 #define	CODE_501_LEN 30
 #define CODE_505_LEN 41
-#define MSG_TEMP_LEN 41
 #define HTTP_METHOD_LEN 7
 #define DEFAULT_PAGE_LEN 22
 #define MDEFAULT_PAGE_LEN 2
+#define CONNECTION_TEMPLATE_LEN 28
 #define IMPLEMENTED_HTTP_METHODS_LEN 2
 
 S_Ll _paths;
@@ -84,7 +84,7 @@ bool is_valid_port(void) { // Done
 }
 
 bool is_valid_request(String *const reqline) { // Done
-	const String const restrict http_methods[HTTP_REQ_AMT] = {
+	const String restrict http_methods[HTTP_REQ_AMT] = {
 		"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE"
 	};
 
@@ -92,7 +92,7 @@ bool is_valid_request(String *const reqline) { // Done
 		if (strncmp(reqline[0], http_methods[i], strnlen(http_methods[i], STR_MAX)) == 0)
 			return true;
 
-	const String const restrict http_ver[HTTP_VER_AMT] = {"HTTP/1.0", "HTTP/1.1", "HTTP/2.0"};
+	const String restrict http_ver[HTTP_VER_AMT] = {"HTTP/1.0", "HTTP/1.1", "HTTP/2.0"};
 
 	for (int i = 0; i < HTTP_VER_AMT; i++)
 		if (strncmp(reqline[2], http_ver[i], strnlen(http_ver[i], STR_MAX)) == 0)
@@ -115,13 +115,19 @@ String clean_config_line(String string) { // Done
 	return string;
 }
 
-void load_configuration(const String const path) { // Done
+void load_configuration(const String path) { // Done
 	const String extension = strrchr(path, '.');
+
+	if (!extension) {
+		if (verbose_flag)
+			puts(YELLOW "File Warning: -s option was not supplied a file" RESET);
+		return;
+	}
 
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
 		if (verbose_flag)
-			printf(YELLOW "File Warning: -s option takes a configuration file as an argument\n"
-			       "Using default parameter values\n" RESET);
+			puts(YELLOW "File Warning: -s option takes a configuration file as an argument\n"
+			       "Using default parameter values" RESET);
 		return;
 	}
 
@@ -158,10 +164,12 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	uid_t euid;
 	gid_t egid;
 
-	while ((c = getopt(argc, argv, ":hVvs:g:u:")) != -1) {
+	while ((c = getopt(argc, argv, "d::hl:Vvs:g:u:")) != -1) { // : at the start?
 		switch (c) {
 		case 'h':
 			printf(USAGE_MSG
+			       "-d\tDump the entire database or a specified table\n"
+			       "-l\tLoad a database fixture\n"
 				   "-h\tHelp menu\n"
 				   "-V\tVersion\n"
 				   "-v\tVerbose\n"
@@ -169,8 +177,17 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 				   "-u\tSet the effective user id for the process\n"
 				   "-g\tSet the effective group if for the process\n", basename(argv[0]));
 			exit(EXIT_SUCCESS);
+		case 'd':
+			if (optarg)
+				sqlite_dumpdata(optarg);
+			else
+				sqlite_dumpdata(NULL);
+			exit(EXIT_SUCCESS);
+		case 'l':
+			sqlite_load_exec(optarg);
+			exit(EXIT_SUCCESS);
 		case 'V':
-			printf("Version 0.5\n");
+			puts("Version 0.6");
 			exit(EXIT_SUCCESS);
 		case 'v':
 			*v_flag = true;
@@ -198,11 +215,11 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	}
 }
 
-void process_php(const int client_fd, const String const file_path) { // Done
+void process_php(const int client_fd, const String file_path) { // Done
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1) {
-		const String const err_msg = strerror(errno);
+		const String err_msg = strerror(errno);
 
 		if (verbose_flag)
 			printf(YELLOW "Process Forking Error: %s\n" RESET, err_msg);
@@ -217,11 +234,11 @@ void process_php(const int client_fd, const String const file_path) { // Done
 		printf(YELLOW "File Descriptor Error 3: %s\n" RESET, strerror(errno));
 }
 
-void send_file(const int client_fd, const String const path) { // Done
+void send_file(const int client_fd, const String path) { // Done
 	const int fd = open(path, O_RDONLY);
 
 	if (fd == -1) {
-		const String const err_msg = strerror(errno);
+		const String err_msg = strerror(errno);
 
 		if (verbose_flag)
 			printf(YELLOW "Serve File Error: %s\n" RESET, err_msg);
@@ -252,7 +269,7 @@ void send_file(const int client_fd, const String const path) { // Done
 		printf(YELLOW "Serve File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
-void respond(const int client_fd, String *const reqlines, const String const path) { // Done
+void respond(const int client_fd, String *const reqlines, const String path) { // Done
 	if (!is_valid_request(reqlines)) {
 		if (verbose_flag)
 			printf("%s %s [400 Bad Request]\n", reqlines[0], reqlines[1]);
@@ -269,7 +286,7 @@ void respond(const int client_fd, String *const reqlines, const String const pat
 		return;
 	}
 
-	const String const restrict implemented_http_methods[IMPLEMENTED_HTTP_METHODS_LEN] = {"GET", "POST"};
+	const String restrict implemented_http_methods[IMPLEMENTED_HTTP_METHODS_LEN] = {"GET", "POST"};
 	bool in = false;
 
 	for (unsigned int i = 0; i < IMPLEMENTED_HTTP_METHODS_LEN; i++)
@@ -383,9 +400,9 @@ void init_url_paths() {
 
 void init_addrinfo(struct addrinfo *const addressinfo) { // Done
 	memset(addressinfo, 0, sizeof(*addressinfo));
-	(*addressinfo).ai_family = AF_INET; // IPV4
+	(*addressinfo).ai_family = AF_INET6; // IPV4 & IPV6
 	(*addressinfo).ai_socktype = SOCK_STREAM; // TCP
-	(*addressinfo).ai_flags = AI_PASSIVE | AI_V4MAPPED; // Gen socket, IPV4
+	(*addressinfo).ai_flags = AI_PASSIVE; // Gen socket
 }
 
 int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Done
@@ -409,6 +426,8 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 		if (bind(*socketfd, p->ai_addr, p->ai_addrlen) == -1) {
 			if (verbose_flag)
 				printf(YELLOW "Bind Error: %s\n" RESET, strerror(errno));
+			if ((close(*socketfd) == -1) && (verbose_flag))
+				printf(YELLOW "Bind File Descriptor Error: %s\n" RESET, strerror(errno));
 			continue;
 		}
 
@@ -442,8 +461,8 @@ void init_signals(void) { // Done
 	}
 }
 
-bool is_image(const String const restrict extension) {
-	const String const img_ext[] = {".png", ".jpg", ".jpeg", ".tiff", ".gif", ".bmp", ".svg", ".ico"};
+bool is_image(const String restrict extension) {
+	const String img_ext[] = {".png", ".jpg", ".jpeg", ".tiff", ".gif", ".bmp", ".svg", ".ico"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
 	for (unsigned int i = 0; i < img_ext_len; i++)
@@ -452,8 +471,8 @@ bool is_image(const String const restrict extension) {
 	return false;
 }
 
-bool is_audio(const String const restrict extension) {
-	const String const img_ext[] = {".wav", ".flac", ".opus", ".mp3", ".aac", ".ogg", ".pcm", ".aiff", ".wma", ".alac"};
+bool is_audio(const String restrict extension) {
+	const String img_ext[] = {".wav", ".flac", ".opus", ".mp3", ".aac", ".ogg", ".pcm", ".aiff", ".wma", ".alac"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
 	for (unsigned int i = 0; i < img_ext_len; i++)
@@ -462,8 +481,8 @@ bool is_audio(const String const restrict extension) {
 	return false;
 }
 
-bool is_video(const String const restrict extension) {
-	const String const img_ext[] = {".mp4", ".mov", ".avi", ".flv", ".wmv"};
+bool is_video(const String restrict extension) {
+	const String img_ext[] = {".mp4", ".mov", ".avi", ".flv", ".wmv"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
 	for (unsigned int i = 0; i < img_ext_len; i++)
@@ -472,8 +491,8 @@ bool is_video(const String const restrict extension) {
 	return false;
 }
 
-bool is_binary(const String const restrict extension) {
-	const String const img_ext[] = {".exe", ".img", ".bin"};
+bool is_binary(const String restrict extension) {
+	const String img_ext[] = {".exe", ".img", ".bin"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
 	for (unsigned int i = 0; i < img_ext_len; i++)
@@ -482,21 +501,21 @@ bool is_binary(const String const restrict extension) {
 	return false;
 }
 
-void process_request(const int fd, String msg, const String const ipv4_address) { // Done
-	char cust_msg[MSG_TEMP_LEN + PATH_MAX],
+void process_request(const int fd, String msg, const String ipv6_address) { // Done
+	char con_msg[CONNECTION_TEMPLATE_LEN + PATH_MAX],
 		 **const reqlines = get_req_lines(msg);
 
 	if (!reqlines) {
-		snprintf(cust_msg, 29 + INET_ADDRSTRLEN, "Connection from %s; BAD REQUEST", ipv4_address);
+		snprintf(con_msg, CONNECTION_TEMPLATE_LEN + INET6_ADDRSTRLEN, "Connection from %s; BAD REQUEST", ipv6_address);
 
 		if (verbose_flag)
-			printf(YELLOW "%s\n" RESET, cust_msg);
-		server_log(cust_msg);
+			printf(YELLOW "%s\n" RESET, con_msg);
+		server_log(con_msg);
 		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
 		send_file(fd, "partials/code-responses/400.html");
 	} else {
 		S_Ll_Node data;
-		const String const restrict extension = strrchr(reqlines[1], '.');
+		const String restrict extension = strrchr(reqlines[1], '.');
 
 		if (extension) {
 			if (strncmp(extension, ".css", CONF_EXT_LEN) == 0)
@@ -515,22 +534,22 @@ void process_request(const int fd, String msg, const String const ipv4_address) 
 		}
 		else if ((data = s_ll_find(_paths, reqlines[1])))
 			strncat(_doc_root, data->path, PATH_MAX);
-		snprintf(cust_msg, MSG_TEMP_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv4_address, reqlines[1]);
+		snprintf(con_msg, CONNECTION_TEMPLATE_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv6_address, reqlines[1]);
 
 		if (verbose_flag)
-			printf("%s\n", cust_msg);
-		server_log(cust_msg);
+			printf("%s\n", con_msg);
+		server_log(con_msg);
 		respond(fd, reqlines, _doc_root);
 	}
 	free_req_lines(reqlines);
 }
 
 int main(const int argc, String *const argv) {
-	char ipv4_address[INET_ADDRSTRLEN];
+	char ipv6_address[INET6_ADDRSTRLEN];
 	int masterfd, newfd;
 	struct addrinfo addressinfo, *serviceinfo;
-	struct sockaddr client_addr;
-	socklen_t sin_size = sizeof(client_addr);
+	struct sockaddr_in6 client_addr;
+	socklen_t sin_size = sizeof(client_addr); // Does this change with every connection?
 	const mode_t mode_d = 0770;
 
 	verbose_flag = true;
@@ -583,8 +602,10 @@ int main(const int argc, String *const argv) {
 	if (verbose_flag)
 		printf(GREEN "Initialization: SUCCESS;\n"
 		       "Listening on port: %s\n"
-		       "root is: %s\n"
-		       "log root is: %s\n" RESET, _port, _doc_root, _log_root);
+		       "Root directory is: %s\n"
+		       "Log root is: %s\n"
+		       "Using Sqlite Version: %s\n" RESET,
+		       _port, _doc_root, _log_root, sqlite_get_version());
 
 	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 
@@ -593,7 +614,7 @@ int main(const int argc, String *const argv) {
 		newfd = accept(masterfd, &client_addr, &sin_size);
 
 		if (newfd == -1) {
-			const String const err_msg = strerror(errno);
+			const String err_msg = strerror(errno);
 
 			if (verbose_flag)
 				printf(YELLOW "Accept Error: %s\n" RESET, err_msg);
@@ -601,12 +622,12 @@ int main(const int argc, String *const argv) {
 			continue;
 		}
 
-		inet_ntop(AF_INET, &(((struct sockaddr_in*)&client_addr)->sin_addr), ipv4_address, INET_ADDRSTRLEN);
+		inet_ntop(AF_INET6, &(((struct sockaddr_in6*)&client_addr)->sin6_addr), ipv6_address, INET6_ADDRSTRLEN);
 
 		if (recv(newfd, msg, MSG_LEN, 0) > 0)
-			process_request(newfd, msg, ipv4_address);
+			process_request(newfd, msg, ipv6_address);
 		else {
-			const String const err_msg = strerror(errno);
+			const String err_msg = strerror(errno);
 
 			if (verbose_flag)
 				printf(YELLOW "Inboud Data Read Error: %s\n" RESET, err_msg);

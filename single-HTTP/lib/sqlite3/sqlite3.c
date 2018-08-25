@@ -21,7 +21,7 @@ typedef struct query_s {
 
 typedef quert_t *Query;
 
-static Query parse_stmt(const String const restrict stmt) {
+static Query parse_stmt(const String restrict stmt) {
     const size_t prepare_stmt_len = strnlen(stmt, KBYTE_S * 2);
     char prepare_stmt[(KBYTE_S * 2) + NT_LEN], result[(KBYTE_S * 2) + NT_LEN] = "", specifiers[63 + NT_LEN] = "";
 
@@ -108,7 +108,7 @@ static void print_rows(const int rows, sqlite3_stmt *sql_byte_code) {
     } while(result == SQLITE_ROW);
 }
 
-int sqlite_exec(const String const restrict stmt, ...) {
+int sqlite_exec(const String restrict stmt, ...) {
     sqlite3 *db;
     sqlite3_stmt *sql_byte_code;
     int result_code = sqlite3_open(_db_path, &db);
@@ -117,7 +117,7 @@ int sqlite_exec(const String const restrict stmt, ...) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
         exit(EXIT_FAILURE);
     }
-    const Query const restrict query = parse_stmt(stmt);
+    const Query restrict query = parse_stmt(stmt);
     result_code = sqlite3_prepare_v2(db, query->stmt, KBYTE_S * 2, &sql_byte_code, NULL);
 
     if (result_code != SQLITE_OK) {
@@ -178,4 +178,27 @@ int sqlite_exec(const String const restrict stmt, ...) {
     sqlite3_close(db);
 
     return 0;
+}
+
+
+void sqlite_load_exec(const String restrict filepath) {
+    FILE *fixture = fopen(filepath, "r");
+    char buf[KBYTE_S], sql_buf[MBYTE_S] = "";
+
+    while (fgets(buf, KBYTE_S, fixture))
+        strncat(sql_buf, buf, KBYTE_S);
+
+    sqlite_exec(sql_buf);
+}
+
+void sqlite_dumpdata(const String restrict table) {
+    if (!table)
+        puts("Database");
+    else
+        puts("Specific table");
+    return;
+}
+
+String sqlite_get_version(void) {
+    return SQLITE_VERSION;
 }

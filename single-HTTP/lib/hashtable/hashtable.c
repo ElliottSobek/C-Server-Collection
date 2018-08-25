@@ -13,8 +13,8 @@
 #define DEFAULT_SIZE 10
 #define PERCENT_CUTOFF 80
 
-static Ll_Node create_node(const String const restrict key, const String const restrict value) {
-	const Ll_Node const restrict node = (Ll_Node) malloc(sizeof(ll_node_t));
+static Ll_Node create_node(const String restrict key, const String restrict value) {
+	const Ll_Node restrict node = (Ll_Node) malloc(sizeof(ll_node_t));
 	if (!node)
 		exit(EXIT_FAILURE);
 
@@ -39,7 +39,7 @@ static Ll_Node create_node(const String const restrict key, const String const r
 	return node;
 }
 
-static Ll_Node find_prev_node(Ll_Node const list, const String const restrict key) {
+static Ll_Node find_prev_node(Ll_Node const list, const String restrict key) {
 	const size_t key_len = strnlen(key, STR_MAX);
 	Ll_Node restrict prev = NULL;
 	Ll_Node cur = list;
@@ -54,7 +54,7 @@ static Ll_Node find_prev_node(Ll_Node const list, const String const restrict ke
 	return NULL;
 }
 
-static Ll_Node s_ll_find(const Ll const restrict list, const String const restrict key) {
+static Ll_Node s_ll_find(const Ll restrict list, const String restrict key) {
 	const size_t key_len = strnlen(key, STR_MAX);
 	Ll_Node cur = list->root;
 
@@ -67,8 +67,8 @@ static Ll_Node s_ll_find(const Ll const restrict list, const String const restri
 	return NULL;
 }
 
-static void s_ll_insert(const Ll const restrict list, const String const restrict key, const String const restrict value) {
-	const Ll_Node const new_node = create_node(key, value);
+static void s_ll_insert(const Ll restrict list, const String restrict key, const String restrict value) {
+	const Ll_Node new_node = create_node(key, value);
 	Ll_Node node = list->root;
 
 	if (!node) {
@@ -82,11 +82,11 @@ static void s_ll_insert(const Ll const restrict list, const String const restric
 	node->next = new_node;
 }
 
-static int s_ll_remove(const Ll const restrict list, const String const restrict key) {
+static int s_ll_remove(const Ll restrict list, const String restrict key) {
 	if (!s_ll_find(list, key))
 		return -1;
 
-	const Ll_Node const root = list->root, prev = find_prev_node(root, key);
+	const Ll_Node root = list->root, prev = find_prev_node(root, key);
 	Ll_Node restrict delete_node;
 
 	if (!prev) {
@@ -131,13 +131,13 @@ static void s_ll_destroy(Ll restrict list) {
 	list = NULL;
 }
 
-static void s_ll_print(const Ll const restrict list) {
+static void s_ll_print(const Ll restrict list) {
 	for (Ll_Node node = list->root; node; node = node->next)
 		printf("%s:%s\n", node->key, node->value);
 }
 
 static Ll s_ll_create(void) {
-	const Ll const restrict list = (Ll) malloc(sizeof(Ll));
+	const Ll restrict list = (Ll) malloc(sizeof(Ll));
 	list->root = NULL;
 
 	return list;
@@ -146,7 +146,7 @@ static Ll s_ll_create(void) {
 // HASHTABLE IMPLEMENTATION
 
 // D. J. Bernstein Hash, Modified
-static unsigned int get_hash(const HashTable const restrict ht, String restrict value) {
+static unsigned int get_hash(const HashTable restrict ht, String restrict value) {
 	unsigned int result = 5381;
 
 	while (*value)
@@ -155,7 +155,7 @@ static unsigned int get_hash(const HashTable const restrict ht, String restrict 
 	return result % ht->max_size;
 }
 
-static void deep_copy(const HashTable const restrict new_table, const HashTable const restrict ht) {
+static void deep_copy(const HashTable restrict new_table, const HashTable restrict ht) {
 	unsigned int bin;
 
 	for (unsigned int i = 0; i < ht->max_size; i++) {
@@ -170,14 +170,14 @@ static void deep_copy(const HashTable const restrict new_table, const HashTable 
 	}
 }
 
-void ht_remove(const HashTable const restrict ht, const String const restrict key) {
+void ht_remove(const HashTable restrict ht, const String restrict key) {
 	const unsigned int bin = get_hash(ht, key);
 
 	if (s_ll_remove(ht->bins[bin], key) == 0)
 		ht->cur_size--;
 }
 
-String ht_get_value(const HashTable const restrict ht, const String const restrict key) {
+String ht_get_value(const HashTable restrict ht, const String restrict key) {
 	const unsigned int bin = get_hash(ht, key);
 
 	for (Ll_Node node = ht->bins[bin]->root; node; node = node->next)
@@ -187,7 +187,7 @@ String ht_get_value(const HashTable const restrict ht, const String const restri
 	return NULL;
 }
 
-void ht_print(const HashTable const restrict ht) {
+void ht_print(const HashTable restrict ht) {
 	for (unsigned int bin = 0; bin < ht->max_size; bin++)
 		s_ll_print(ht->bins[bin]);
 }
@@ -207,7 +207,7 @@ HashTable ht_create(const unsigned int max_size) {
 	if (max_size < 1)
 		return NULL;
 
-	const HashTable const ht = (HashTable) malloc(sizeof(hashtable_t));
+	const HashTable ht = (HashTable) malloc(sizeof(hashtable_t));
 	if (!ht)
 		exit(EXIT_FAILURE);
 
@@ -224,8 +224,8 @@ HashTable ht_create(const unsigned int max_size) {
 	return ht;
 }
 
-void ht_insert(HashTable *ht_head, const String const restrict key, const String const restrict value) {
-	const HashTable const ht = *ht_head;
+void ht_insert(HashTable *ht_head, const String restrict key, const String restrict value) {
+	const HashTable ht = *ht_head;
 	const unsigned int bin = get_hash(ht, key);
 
 	s_ll_insert(ht->bins[bin], key, value);

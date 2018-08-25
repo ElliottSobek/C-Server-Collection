@@ -3,6 +3,10 @@
 
 #include "../types/types.h"
 
-extern int sqlite_exec(const String const restrict, ...);
+extern int sqlite_exec(const String restrict, ...);
+extern void sqlite_load_fixture(const String restrict);
+extern void sqlite_dumpdata(const String restrict);
+extern void sqlite_load_exec(const String restrict);
+extern String sqlite_get_version(void);
 
 #endif /* End SQLITE3_H */

@@ -16,7 +16,7 @@
 #define FTIME_MLEN 25
 #define FF_TIME_PATH_MLEN 19
 
-void server_log(const String const restrict msg) {
+void server_log(const String restrict msg) {
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
 	String log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char)),
