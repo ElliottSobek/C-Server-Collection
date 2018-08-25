@@ -15,6 +15,11 @@ Runs in a unix like environment.
 
 These servers are build as a proof of concept and a challenge to myself. They can be used as a testing or production server with the appropriate modifications for your needs. An individual with intermediate knowledge of C and SQL is recommended.
 
+## Development Requirements
+
+* gcc
+* libsqlite3-dev
+
 ## Building
 
 If you are adding features or debugging a server run: make [debug]
