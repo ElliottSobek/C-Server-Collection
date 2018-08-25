@@ -191,6 +191,14 @@ void sqlite_load_exec(const String restrict filepath) {
     sqlite_exec(sql_buf);
 }
 
-void sqlite_dumpdata(const String *restrict bob) {
+void sqlite_dumpdata(const String restrict table) {
+    if (!table)
+        puts("Database");
+    else
+        puts("Specific table");
     return;
+}
+
+String sqlite_get_version(void) {
+    return SQLITE_VERSION;
 }

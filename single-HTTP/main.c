@@ -39,7 +39,7 @@
 #define DEFAULT_HT_S 10
 #define DEFAULT_PORT "8888"
 #define CONNECTION_TEMPLATE "Connection from %s for file %s"
-#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-d[filename]] [-l <filepath>] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
+#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-d[table]] [-l <filepath>] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -161,14 +161,14 @@ void load_configuration(const String path) { // Done
 
 void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	int c;
-	uid_t euid; // Move inside assign block?
+	uid_t euid;
 	gid_t egid;
 
 	while ((c = getopt(argc, argv, "d::hl:Vvs:g:u:")) != -1) { // : at the start?
 		switch (c) {
 		case 'h':
 			printf(USAGE_MSG
-			       "-d\tDump the entire database or a specified table to a file\n"
+			       "-d\tDump the entire database or a specified table\n"
 			       "-l\tLoad a database fixture\n"
 				   "-h\tHelp menu\n"
 				   "-V\tVersion\n"
@@ -178,7 +178,10 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 				   "-g\tSet the effective group if for the process\n", basename(argv[0]));
 			exit(EXIT_SUCCESS);
 		case 'd':
-			sqlite_dumpdata(argv);
+			if (optarg)
+				sqlite_dumpdata(optarg);
+			else
+				sqlite_dumpdata(NULL);
 			exit(EXIT_SUCCESS);
 		case 'l':
 			sqlite_load_exec(optarg);
@@ -599,8 +602,10 @@ int main(const int argc, String *const argv) {
 	if (verbose_flag)
 		printf(GREEN "Initialization: SUCCESS;\n"
 		       "Listening on port: %s\n"
-		       "root is: %s\n"
-		       "log root is: %s\n" RESET, _port, _doc_root, _log_root);
+		       "Root directory is: %s\n"
+		       "Log root is: %s\n"
+		       "Using Sqlite Version: %s\n" RESET,
+		       _port, _doc_root, _log_root, sqlite_get_version());
 
 	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 
