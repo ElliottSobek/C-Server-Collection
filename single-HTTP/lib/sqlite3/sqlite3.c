@@ -200,5 +200,5 @@ void sqlite_dumpdata(const String restrict table) {
 }
 
 String sqlite_get_version(void) {
-    return SQLITE_VERSION;
+    return "Sqlite3 Version " SQLITE_VERSION;
 }

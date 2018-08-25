@@ -604,7 +604,7 @@ int main(const int argc, String *const argv) {
 		       "Listening on port: %s\n"
 		       "Root directory is: %s\n"
 		       "Log root is: %s\n"
-		       "Using Sqlite Version: %s\n" RESET,
+		       "Using: %s\n" RESET,
 		       _port, _doc_root, _log_root, sqlite_get_version());
 
 	const int default_root_len = strnlen(_doc_root, PATH_MAX);
