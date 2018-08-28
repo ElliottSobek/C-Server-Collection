@@ -13,6 +13,10 @@
 #include "../types/types.h"
 #include "../colors/colors.h"
 
+#include "../../debug.h"
+
+#define ALL_TABLES -1
+
 typedef struct query_s {
     String stmt, specifiers;
     bool is_parameterized;
@@ -191,11 +195,44 @@ void sqlite_load_exec(const String restrict filepath) {
     sqlite_exec(sql_buf);
 }
 
-void sqlite_dumpdata(const String restrict table) {
-    if (!table)
-        puts("Database");
-    else
-        puts("Specific table");
+void sqlite_dumpdb(void) {
+    sqlite3 *d_db, *s_db;
+    sqlite3_backup *backup;
+    int result_code = sqlite3_open(_db_path, &s_db);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(s_db));
+        exit(EXIT_FAILURE);
+    }
+    result_code = sqlite3_open("database/copy.sqlite3", &d_db);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(d_db));
+        exit(EXIT_FAILURE);
+    }
+    backup = sqlite3_backup_init(d_db, "main", s_db, "main");
+
+    if (!backup) {
+        fprintf(stderr, RED "Database Error: Cannot initalize database copy: %s\n" RESET, sqlite3_errmsg(d_db));
+        exit(EXIT_FAILURE);
+    }
+    result_code = sqlite3_backup_step(backup, ALL_TABLES);
+
+    while (result_code == SQLITE_OK)
+        result_code = sqlite3_backup_step(backup, ALL_TABLES);
+
+    if (result_code != SQLITE_DONE) {
+        fprintf(stderr, RED "Database Error: Cannot copy database: %s\n" RESET, sqlite3_errmsg(s_db));
+        exit(EXIT_FAILURE);
+    }
+    sqlite3_backup_finish(backup);
+    sqlite3_close(s_db);
+
+    return;
+}
+
+void sqlite_dumptable(const String restrict table) {
+    puts("Dump table");
     return;
 }
 
