@@ -186,13 +186,31 @@ int sqlite_exec(const String restrict stmt, ...) {
 
 
 void sqlite_load_exec(const String restrict filepath) {
+    sqlite3 *db;
+    char *err_msg, buf[KBYTE_S], sql_buf[MBYTE_S] = {0};
     FILE *fixture = fopen(filepath, "r");
-    char buf[KBYTE_S], sql_buf[MBYTE_S] = "";
 
     while (fgets(buf, KBYTE_S, fixture))
         strncat(sql_buf, buf, KBYTE_S);
 
-    sqlite_exec(sql_buf);
+    int result_code = sqlite3_open(_db_path, &db);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        return;
+    }
+
+    result_code = sqlite3_exec(db, sql_buf, NULL, NULL, &err_msg);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "SQL error: %s\n" RESET, err_msg);
+        sqlite3_free(err_msg);
+        sqlite3_close(db);
+        return;
+    }
+    sqlite3_close(db);
+
+    return;
 }
 
 void sqlite_dumpdb(void) {
@@ -202,19 +220,19 @@ void sqlite_dumpdb(void) {
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(s_db));
-        exit(EXIT_FAILURE);
+        return;
     }
     result_code = sqlite3_open("database/copy.sqlite3", &d_db);
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(d_db));
-        exit(EXIT_FAILURE);
+        return;
     }
     backup = sqlite3_backup_init(d_db, "main", s_db, "main");
 
     if (!backup) {
         fprintf(stderr, RED "Database Error: Cannot initalize database copy: %s\n" RESET, sqlite3_errmsg(d_db));
-        exit(EXIT_FAILURE);
+        return;
     }
     result_code = sqlite3_backup_step(backup, ALL_TABLES);
 
@@ -223,7 +241,7 @@ void sqlite_dumpdb(void) {
 
     if (result_code != SQLITE_DONE) {
         fprintf(stderr, RED "Database Error: Cannot copy database: %s\n" RESET, sqlite3_errmsg(s_db));
-        exit(EXIT_FAILURE);
+        return;
     }
     sqlite3_backup_finish(backup);
     sqlite3_close(s_db);
@@ -242,7 +260,7 @@ void sqlite_dumptable(const String restrict table) {
 
     if (ret != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
-        exit(EXIT_FAILURE);
+        return;
     }
 
     ret = sqlite3_prepare_v2(db, "SELECT sql, tbl_name FROM sqlite_master WHERE type = 'table'", -1, &stmt_table, NULL);
