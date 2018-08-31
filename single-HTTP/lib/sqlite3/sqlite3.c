@@ -187,19 +187,23 @@ int sqlite_exec(const String restrict stmt, ...) {
 
 void sqlite_load_exec(const String restrict filepath) {
     sqlite3 *db;
-    char *err_msg, buf[KBYTE_S], sql_buf[MBYTE_S] = {0};
+    char buf[KBYTE_S], sql_buf[MBYTE_S] = {0};
+    String err_msg;
     FILE *fixture = fopen(filepath, "r");
+
+    if (!fixture) {
+        fprintf(stderr, RED "%s\n" RESET, strerror(errno));
+        return;
+    }
 
     while (fgets(buf, KBYTE_S, fixture))
         strncat(sql_buf, buf, KBYTE_S);
-
     int result_code = sqlite3_open(_db_path, &db);
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
         return;
     }
-
     result_code = sqlite3_exec(db, sql_buf, NULL, NULL, &err_msg);
 
     if (result_code != SQLITE_OK) {
@@ -219,13 +223,13 @@ void sqlite_dumpdb(void) {
     int result_code = sqlite3_open(_db_path, &s_db);
 
     if (result_code != SQLITE_OK) {
-        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(s_db));
+        fprintf(stderr, RED "Database Error: Cannot open source database: %s\n" RESET, sqlite3_errmsg(s_db));
         return;
     }
     result_code = sqlite3_open("database/copy.sqlite3", &d_db);
 
     if (result_code != SQLITE_OK) {
-        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(d_db));
+        fprintf(stderr, RED "Database Error: Cannot open destination database : %s\n" RESET, sqlite3_errmsg(d_db));
         return;
     }
     backup = sqlite3_backup_init(d_db, "main", s_db, "main");
