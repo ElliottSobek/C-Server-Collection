@@ -257,7 +257,7 @@ void sqlite_dumpdb(void) {
 void sqlite_dumptable(const String restrict table) {
     sqlite3 *db;
     sqlite3_stmt *stmt_table, *stmt_data;
-    char cmd[4096] = {0};
+    char sql_stmt[4096] = {0};
     String data;
     int col_cnt, result_code = sqlite3_open(_db_path, &db);
 
@@ -265,17 +265,22 @@ void sqlite_dumptable(const String restrict table) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
         return;
     }
-    result_code = sqlite3_prepare_v2(db, "SELECT sql, tbl_name FROM sqlite_master WHERE type = 'table'", -1, &stmt_table, NULL);
+    snprintf(sql_stmt, KBYTE_S, "SELECT sql, COUNT() FROM sqlite_master WHERE type = 'table' AND name = '%s'", table);
+    result_code = sqlite3_prepare_v2(db, sql_stmt, -1, &stmt_table, NULL);
 
     if (result_code != SQLITE_OK) {
-        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        fprintf(stderr, RED "SQL error: %s\n" RESET, sqlite3_errmsg(db));
         return;
     }
-
-    printf("PRAGMA foreign_keys=off;\nBEGIN TRANSACTION;\n");
     result_code = sqlite3_step(stmt_table);
 
-    while (result_code == SQLITE_ROW) {
+    if (sqlite3_column_int(stmt_table, 1) == 0) {
+        fprintf(stderr, RED "SQL error: table '%s' does not exist\n" RESET, table);
+        return;
+    }
+    printf("PRAGMA foreign_keys=off;\nBEGIN TRANSACTION;\nDROP TABLE IF EXISTS %s;\n", table);
+
+    while (result_code == SQLITE_ROW) { // Multiple tables
         data = (char*) sqlite3_column_text(stmt_table, 0);
 
         if (!data) {
@@ -284,35 +289,35 @@ void sqlite_dumptable(const String restrict table) {
         }
 
         printf("%s;\n", data);
-        sprintf(cmd, "SELECT * FROM %s;", table);
-        result_code = sqlite3_prepare_v2(db, cmd, -1, &stmt_data, NULL);
+        snprintf(sql_stmt, KBYTE_S, "SELECT * FROM %s;", table);
+        result_code = sqlite3_prepare_v2(db, sql_stmt, -1, &stmt_data, NULL);
 
         if (result_code != SQLITE_OK) {
-            fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+            fprintf(stderr, RED "SQL error: %s\n" RESET, sqlite3_errmsg(db));
             return;
         }
         result_code = sqlite3_step(stmt_data);
 
         while (result_code == SQLITE_ROW) {
-            sprintf(cmd, "INSERT INTO \"%s\" VALUES (", table);
+            snprintf(sql_stmt, KBYTE_S, "INSERT INTO \"%s\" VALUES (", table);
             col_cnt = sqlite3_column_count(stmt_data);
 
             for (int index = 0; index < col_cnt; index++) {
                 if (index)
-                    strcat(cmd, ",");
+                    strcat(sql_stmt, ",");
                 data = (char*) sqlite3_column_text(stmt_data, index);
 
                 if (data) {
                     if (sqlite3_column_type(stmt_data, index) == SQLITE_TEXT) {
-                        strcat(cmd, "'");
-                        strcat(cmd, data);
-                        strcat(cmd, "'");
+                        strcat(sql_stmt, "'");
+                        strcat(sql_stmt, data);
+                        strcat(sql_stmt, "'");
                     } else
-                        strcat(cmd, data);
+                        strcat(sql_stmt, data);
                 } else
-                    strcat(cmd, "NULL");
+                    strcat(sql_stmt, "NULL");
             }
-            printf("%s);\n", cmd);
+            printf("%s);\n", sql_stmt);
             result_code = sqlite3_step(stmt_data);
         }
         result_code = sqlite3_step(stmt_table);
@@ -323,7 +328,7 @@ void sqlite_dumptable(const String restrict table) {
     result_code = sqlite3_prepare_v2(db, "SELECT sql FROM sqlite_master WHERE type = 'trigger';", -1, &stmt_table, NULL);
 
     if (result_code != SQLITE_OK) {
-        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        fprintf(stderr, RED "SQL error: %s\n" RESET, sqlite3_errmsg(db));
         return;
     }
     result_code = sqlite3_step(stmt_table);
