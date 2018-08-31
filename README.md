@@ -32,6 +32,8 @@ If using for production run: make production
 
 ### Options
 
+* Dump the entire database or a specified table (-d)[table_name]
+* Load a database fixture (-l) <filepath>
 * Print help menu (-h)
 * Print version number (-V)
 * Print verbose output (-v)
