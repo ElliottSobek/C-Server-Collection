@@ -258,7 +258,7 @@ void sqlite_dumptable(const String restrict table) {
     sqlite3 *db;
     sqlite3_stmt *stmt_table, *stmt_data;
     char cmd[4096] = {0};
-    String table_name, data;
+    String data;
     int col_cnt, result_code = sqlite3_open(_db_path, &db);
 
     if (result_code != SQLITE_OK) {
@@ -267,29 +267,34 @@ void sqlite_dumptable(const String restrict table) {
     }
     result_code = sqlite3_prepare_v2(db, "SELECT sql, tbl_name FROM sqlite_master WHERE type = 'table'", -1, &stmt_table, NULL);
 
-    if (result_code != SQLITE_OK)
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
         return;
+    }
 
     printf("PRAGMA foreign_keys=off;\nBEGIN TRANSACTION;\n");
     result_code = sqlite3_step(stmt_table);
 
     while (result_code == SQLITE_ROW) {
         data = (char*) sqlite3_column_text(stmt_table, 0);
-        table_name = (char*) sqlite3_column_text(stmt_table, 1);
 
-        if (!data || !table_name)
+        if (!data) {
+            fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
             return;
+        }
 
         printf("%s;\n", data);
-        sprintf(cmd, "SELECT * FROM %s;", table_name);
+        sprintf(cmd, "SELECT * FROM %s;", table);
         result_code = sqlite3_prepare_v2(db, cmd, -1, &stmt_data, NULL);
 
-        if (result_code != SQLITE_OK)
+        if (result_code != SQLITE_OK) {
+            fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
             return;
+        }
         result_code = sqlite3_step(stmt_data);
 
         while (result_code == SQLITE_ROW) {
-            sprintf(cmd, "INSERT INTO \"%s\" VALUES (", table_name);
+            sprintf(cmd, "INSERT INTO \"%s\" VALUES (", table);
             col_cnt = sqlite3_column_count(stmt_data);
 
             for (int index = 0; index < col_cnt; index++) {
@@ -317,15 +322,19 @@ void sqlite_dumptable(const String restrict table) {
         sqlite3_finalize(stmt_table);
     result_code = sqlite3_prepare_v2(db, "SELECT sql FROM sqlite_master WHERE type = 'trigger';", -1, &stmt_table, NULL);
 
-    if (result_code != SQLITE_OK)
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
         return;
+    }
     result_code = sqlite3_step(stmt_table);
 
     while (result_code == SQLITE_ROW) {
         data = (char*) sqlite3_column_text(stmt_table, 0);
 
-        if (!data)
+        if (!data) {
+            fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
             return;
+        }
 
         printf("%s;\n", data);
         result_code = sqlite3_step(stmt_table);
