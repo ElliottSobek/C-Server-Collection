@@ -32,6 +32,8 @@ If using for production run: make production
 
 ### Options
 
+* Dump the entire database or a specified table (-d)[table_name]
+* Load a database fixture (-l) <filepath>
 * Print help menu (-h)
 * Print version number (-V)
 * Print verbose output (-v)
@@ -49,7 +51,7 @@ All servers follow a rolling log file implementation where logs follow the struc
 
 2. Given the C languange is a non object oriented language the use of a true database ORM is not possible. An intermediate knowledge if the SQL language is recommended when using the database API.
 
-3. These servers are custom build from the ground up and as such are not HTTP 1.1 or HTTP 1.0 compliant. With this said the servers follow closley HTTP 1.0.
+3. These servers are custom build from the ground up and as such are not HTTP 1.1 or HTTP 1.0 compliant. With this said the servers follow closely HTTP 1.0.
 
 4. None of the servers are load balancing capable or implement connection timeouts.
 

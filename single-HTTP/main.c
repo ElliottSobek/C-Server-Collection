@@ -45,7 +45,7 @@
 #define STR_MAX 2048
 #define PORT_MIN 0
 #define PORT_MAX 65536
-#define MAX_ARGS 4
+#define MAX_ARGS 10
 #define PACKET_MAX 1024
 #define HTTP_VER_AMT 3
 #define HTTP_REQ_AMT 8
@@ -179,9 +179,9 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 			exit(EXIT_SUCCESS);
 		case 'd':
 			if (optarg)
-				sqlite_dumpdata(optarg);
+				sqlite_dumptable(optarg);
 			else
-				sqlite_dumpdata(NULL);
+				sqlite_dumpdb();
 			exit(EXIT_SUCCESS);
 		case 'l':
 			sqlite_load_exec(optarg);
@@ -604,8 +604,10 @@ int main(const int argc, String *const argv) {
 		       "Listening on port: %s\n"
 		       "Root directory is: %s\n"
 		       "Log root is: %s\n"
-		       "Using Sqlite Version: %s\n" RESET,
+		       "Using: %s\n" RESET,
 		       _port, _doc_root, _log_root, sqlite_get_version());
+
+	sqlite_exec("SELECT * FROM test;");
 
 	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 

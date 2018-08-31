@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -12,6 +13,10 @@
 #include "../../globals.h"
 #include "../types/types.h"
 #include "../colors/colors.h"
+
+#include "../../debug.h"
+
+#define ALL_TABLES -1
 
 typedef struct query_s {
     String stmt, specifiers;
@@ -182,23 +187,165 @@ int sqlite_exec(const String restrict stmt, ...) {
 
 
 void sqlite_load_exec(const String restrict filepath) {
+    sqlite3 *db;
+    char buf[KBYTE_S], sql_buf[MBYTE_S] = {0};
+    String err_msg;
     FILE *fixture = fopen(filepath, "r");
-    char buf[KBYTE_S], sql_buf[MBYTE_S] = "";
+
+    if (!fixture) {
+        fprintf(stderr, RED "%s\n" RESET, strerror(errno));
+        return;
+    }
 
     while (fgets(buf, KBYTE_S, fixture))
         strncat(sql_buf, buf, KBYTE_S);
+    int result_code = sqlite3_open(_db_path, &db);
 
-    sqlite_exec(sql_buf);
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        return;
+    }
+    result_code = sqlite3_exec(db, sql_buf, NULL, NULL, &err_msg);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "SQL error: %s\n" RESET, err_msg);
+        sqlite3_free(err_msg);
+        sqlite3_close(db);
+        return;
+    }
+    sqlite3_close(db);
+
+    return;
 }
 
-void sqlite_dumpdata(const String restrict table) {
-    if (!table)
-        puts("Database");
-    else
-        puts("Specific table");
+void sqlite_dumpdb(void) {
+    sqlite3 *d_db, *s_db;
+    sqlite3_backup *backup;
+    int result_code = sqlite3_open(_db_path, &s_db);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "Database Error: Cannot open source database: %s\n" RESET, sqlite3_errmsg(s_db));
+        return;
+    }
+    result_code = sqlite3_open("database/copy.sqlite3", &d_db);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "Database Error: Cannot open destination database : %s\n" RESET, sqlite3_errmsg(d_db));
+        return;
+    }
+    backup = sqlite3_backup_init(d_db, "main", s_db, "main");
+
+    if (!backup) {
+        fprintf(stderr, RED "Database Error: Cannot initalize database copy: %s\n" RESET, sqlite3_errmsg(d_db));
+        return;
+    }
+    result_code = sqlite3_backup_step(backup, ALL_TABLES);
+
+    while (result_code == SQLITE_OK)
+        result_code = sqlite3_backup_step(backup, ALL_TABLES);
+
+    if (result_code != SQLITE_DONE) {
+        fprintf(stderr, RED "Database Error: Cannot copy database: %s\n" RESET, sqlite3_errmsg(s_db));
+        return;
+    }
+    sqlite3_backup_finish(backup);
+    sqlite3_close(s_db);
+
+    return;
+}
+
+void sqlite_dumptable(const String restrict table) {
+    sqlite3 *db;
+    sqlite3_stmt *stmt_table, *stmt_data;
+    char sql_stmt[4096] = {0};
+    String data;
+    int col_cnt, result_code = sqlite3_open(_db_path, &db);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        return;
+    }
+    snprintf(sql_stmt, KBYTE_S, "SELECT sql, COUNT() FROM sqlite_master WHERE type = 'table' AND name = '%s'", table);
+    result_code = sqlite3_prepare_v2(db, sql_stmt, -1, &stmt_table, NULL);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "SQL error: %s\n" RESET, sqlite3_errmsg(db));
+        return;
+    }
+    result_code = sqlite3_step(stmt_table);
+
+    if (sqlite3_column_int(stmt_table, 1) == 0) {
+        fprintf(stderr, RED "SQL error: table '%s' does not exist\n" RESET, table);
+        return;
+    }
+    printf("PRAGMA foreign_keys=off;\nBEGIN TRANSACTION;\nDROP TABLE IF EXISTS %s;\n", table);
+    data = (char*) sqlite3_column_text(stmt_table, 0);
+
+    if (!data) {
+        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        return;
+    }
+
+    printf("%s;\n", data);
+    snprintf(sql_stmt, KBYTE_S, "SELECT * FROM %s;", table);
+    result_code = sqlite3_prepare_v2(db, sql_stmt, -1, &stmt_data, NULL);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "SQL error: %s\n" RESET, sqlite3_errmsg(db));
+        return;
+    }
+    result_code = sqlite3_step(stmt_data);
+
+    while (result_code == SQLITE_ROW) {
+        snprintf(sql_stmt, KBYTE_S, "INSERT INTO \"%s\" VALUES (", table);
+        col_cnt = sqlite3_column_count(stmt_data);
+
+        for (int index = 0; index < col_cnt; index++) {
+            if (index)
+                strcat(sql_stmt, ",");
+            data = (char*) sqlite3_column_text(stmt_data, index);
+
+            if (data) {
+                if (sqlite3_column_type(stmt_data, index) == SQLITE_TEXT) {
+                    strcat(sql_stmt, "'");
+                    strcat(sql_stmt, data);
+                    strcat(sql_stmt, "'");
+                } else
+                    strcat(sql_stmt, data);
+            } else
+                strcat(sql_stmt, "NULL");
+        }
+        printf("%s);\n", sql_stmt);
+        result_code = sqlite3_step(stmt_data);
+    }
+    result_code = sqlite3_step(stmt_table);
+
+    if (stmt_table)
+        sqlite3_finalize(stmt_table);
+    result_code = sqlite3_prepare_v2(db, "SELECT sql FROM sqlite_master WHERE type = 'trigger';", -1, &stmt_table, NULL);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "SQL error: %s\n" RESET, sqlite3_errmsg(db));
+        return;
+    }
+    result_code = sqlite3_step(stmt_table);
+
+    while (result_code == SQLITE_ROW) {
+        data = (char*) sqlite3_column_text(stmt_table, 0);
+
+        if (!data) {
+            fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+            return;
+        }
+
+        printf("%s;\n", data);
+        result_code = sqlite3_step(stmt_table);
+    }
+    printf("COMMIT;\n");
+
     return;
 }
 
 String sqlite_get_version(void) {
-    return SQLITE_VERSION;
+    return "Sqlite3 Version " SQLITE_VERSION;
 }
