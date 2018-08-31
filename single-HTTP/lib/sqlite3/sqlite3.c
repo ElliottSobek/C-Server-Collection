@@ -279,49 +279,46 @@ void sqlite_dumptable(const String restrict table) {
         return;
     }
     printf("PRAGMA foreign_keys=off;\nBEGIN TRANSACTION;\nDROP TABLE IF EXISTS %s;\n", table);
+    data = (char*) sqlite3_column_text(stmt_table, 0);
 
-    while (result_code == SQLITE_ROW) { // Multiple tables
-        data = (char*) sqlite3_column_text(stmt_table, 0);
-
-        if (!data) {
-            fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
-            return;
-        }
-
-        printf("%s;\n", data);
-        snprintf(sql_stmt, KBYTE_S, "SELECT * FROM %s;", table);
-        result_code = sqlite3_prepare_v2(db, sql_stmt, -1, &stmt_data, NULL);
-
-        if (result_code != SQLITE_OK) {
-            fprintf(stderr, RED "SQL error: %s\n" RESET, sqlite3_errmsg(db));
-            return;
-        }
-        result_code = sqlite3_step(stmt_data);
-
-        while (result_code == SQLITE_ROW) {
-            snprintf(sql_stmt, KBYTE_S, "INSERT INTO \"%s\" VALUES (", table);
-            col_cnt = sqlite3_column_count(stmt_data);
-
-            for (int index = 0; index < col_cnt; index++) {
-                if (index)
-                    strcat(sql_stmt, ",");
-                data = (char*) sqlite3_column_text(stmt_data, index);
-
-                if (data) {
-                    if (sqlite3_column_type(stmt_data, index) == SQLITE_TEXT) {
-                        strcat(sql_stmt, "'");
-                        strcat(sql_stmt, data);
-                        strcat(sql_stmt, "'");
-                    } else
-                        strcat(sql_stmt, data);
-                } else
-                    strcat(sql_stmt, "NULL");
-            }
-            printf("%s);\n", sql_stmt);
-            result_code = sqlite3_step(stmt_data);
-        }
-        result_code = sqlite3_step(stmt_table);
+    if (!data) {
+        fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        return;
     }
+
+    printf("%s;\n", data);
+    snprintf(sql_stmt, KBYTE_S, "SELECT * FROM %s;", table);
+    result_code = sqlite3_prepare_v2(db, sql_stmt, -1, &stmt_data, NULL);
+
+    if (result_code != SQLITE_OK) {
+        fprintf(stderr, RED "SQL error: %s\n" RESET, sqlite3_errmsg(db));
+        return;
+    }
+    result_code = sqlite3_step(stmt_data);
+
+    while (result_code == SQLITE_ROW) {
+        snprintf(sql_stmt, KBYTE_S, "INSERT INTO \"%s\" VALUES (", table);
+        col_cnt = sqlite3_column_count(stmt_data);
+
+        for (int index = 0; index < col_cnt; index++) {
+            if (index)
+                strcat(sql_stmt, ",");
+            data = (char*) sqlite3_column_text(stmt_data, index);
+
+            if (data) {
+                if (sqlite3_column_type(stmt_data, index) == SQLITE_TEXT) {
+                    strcat(sql_stmt, "'");
+                    strcat(sql_stmt, data);
+                    strcat(sql_stmt, "'");
+                } else
+                    strcat(sql_stmt, data);
+            } else
+                strcat(sql_stmt, "NULL");
+        }
+        printf("%s);\n", sql_stmt);
+        result_code = sqlite3_step(stmt_data);
+    }
+    result_code = sqlite3_step(stmt_table);
 
     if (stmt_table)
         sqlite3_finalize(stmt_table);
