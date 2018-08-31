@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -256,27 +257,23 @@ void sqlite_dumpdb(void) {
 void sqlite_dumptable(const String restrict table) {
     sqlite3 *db;
     sqlite3_stmt *stmt_table, *stmt_data;
-    const char *table_name, *data;
-    int col_cnt = 0, ret = 0;
     char cmd[4096] = {0};
+    String table_name, data;
+    int col_cnt, result_code = sqlite3_open(_db_path, &db);
 
-    ret = sqlite3_open(_db_path, &db);
-
-    if (ret != SQLITE_OK) {
+    if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
         return;
     }
+    result_code = sqlite3_prepare_v2(db, "SELECT sql, tbl_name FROM sqlite_master WHERE type = 'table'", -1, &stmt_table, NULL);
 
-    ret = sqlite3_prepare_v2(db, "SELECT sql, tbl_name FROM sqlite_master WHERE type = 'table'", -1, &stmt_table, NULL);
-
-    if (ret != SQLITE_OK)
+    if (result_code != SQLITE_OK)
         return;
 
     printf("PRAGMA foreign_keys=off;\nBEGIN TRANSACTION;\n");
+    result_code = sqlite3_step(stmt_table);
 
-    ret = sqlite3_step(stmt_table);
-
-    while (ret == SQLITE_ROW) {
+    while (result_code == SQLITE_ROW) {
         data = (char*) sqlite3_column_text(stmt_table, 0);
         table_name = (char*) sqlite3_column_text(stmt_table, 1);
 
@@ -285,15 +282,13 @@ void sqlite_dumptable(const String restrict table) {
 
         printf("%s;\n", data);
         sprintf(cmd, "SELECT * FROM %s;", table_name);
+        result_code = sqlite3_prepare_v2(db, cmd, -1, &stmt_data, NULL);
 
-        ret = sqlite3_prepare_v2(db, cmd, -1, &stmt_data, NULL);
-
-        if (ret != SQLITE_OK)
+        if (result_code != SQLITE_OK)
             return;
+        result_code = sqlite3_step(stmt_data);
 
-        ret = sqlite3_step(stmt_data);
-
-        while (ret == SQLITE_ROW) {
+        while (result_code == SQLITE_ROW) {
             sprintf(cmd, "INSERT INTO \"%s\" VALUES (", table_name);
             col_cnt = sqlite3_column_count(stmt_data);
 
@@ -313,32 +308,28 @@ void sqlite_dumptable(const String restrict table) {
                     strcat(cmd, "NULL");
             }
             printf("%s);\n", cmd);
-            ret = sqlite3_step(stmt_data);
+            result_code = sqlite3_step(stmt_data);
         }
-        ret = sqlite3_step(stmt_table);
+        result_code = sqlite3_step(stmt_table);
     }
 
     if (stmt_table)
         sqlite3_finalize(stmt_table);
+    result_code = sqlite3_prepare_v2(db, "SELECT sql FROM sqlite_master WHERE type = 'trigger';", -1, &stmt_table, NULL);
 
-    ret = sqlite3_prepare_v2(db, "SELECT sql FROM sqlite_master WHERE type = 'trigger';", -1, &stmt_table, NULL);
-
-    if (ret != SQLITE_OK)
+    if (result_code != SQLITE_OK)
         return;
+    result_code = sqlite3_step(stmt_table);
 
-    ret = sqlite3_step(stmt_table);
-
-    while (ret == SQLITE_ROW) {
+    while (result_code == SQLITE_ROW) {
         data = (char*) sqlite3_column_text(stmt_table, 0);
 
         if (!data)
             return;
 
         printf("%s;\n", data);
-
-        ret = sqlite3_step(stmt_table);
+        result_code = sqlite3_step(stmt_table);
     }
-
     printf("COMMIT;\n");
 
     return;
