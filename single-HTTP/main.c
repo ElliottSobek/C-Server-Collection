@@ -390,9 +390,10 @@ void free_req_lines(String *reqline) { // Done
 	reqline = NULL;
 }
 
-void init_url_paths() {
+void init_url_paths(void) {
 	s_ll_insert(_paths, "/", "static/html/index.html");
 	s_ll_insert(_paths, "/index", "static/html/index.html");
+	s_ll_insert(_paths, "/home", "static/html/index.html");
 	s_ll_insert(_paths, "/login", "views/login.php");
 	s_ll_insert(_paths, "/contact", "static/html/contact.html");
 	s_ll_insert(_paths, "/forbidden", "static/html/forbidden.html");
