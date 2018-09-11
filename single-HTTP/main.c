@@ -75,7 +75,29 @@ S_Ll _paths;
 char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT;
 
-bool sigint_flag = true;
+bool _sigint_flag = true;
+
+typedef enum {
+	UNKNOWN,
+	GET,
+	POST
+} _methods; // Worth typedeffing?
+
+static short get_method_type(const String restrict method) {
+	// _methods methods = UNKNOWN;
+
+	// if (strncmp("GET", method, 3) == 0)
+	// 	methods = GET;
+	// else if (strncmp("POST", method, 4) == 0)
+	// 	methods = POST;
+	// return methods;
+
+	if (strncmp("GET", method, 3) == 0)
+		return GET;
+	else if (strncmp("POST", method, 4) == 0)
+		return POST;
+	return UNKNOWN;
+}
 
 bool is_valid_port(void) { // Done
 	const int port_num = atoi(_port);
@@ -303,7 +325,18 @@ void respond(const int client_fd, String *const reqlines, const String path) { /
 		return;
 	}
 
-	const int fd = open(path, O_RDONLY);
+	short method = get_method_type(reqlines[0]);
+
+	switch (method) {
+	case GET:
+		puts("GET");
+		break;
+	case POST:
+		puts("POST");
+		break;
+	}
+
+	const int fd = open(path, O_RDONLY); // Files for GET here and after
 
 	if (fd != -1) {
 		if ((close(fd) == -1) && (verbose_flag))
@@ -445,7 +478,7 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 }
 
 void handle_sigint(const int arg) { // Done
-	sigint_flag = false;
+	_sigint_flag = false;
 }
 
 void init_signals(void) { // Done
@@ -545,6 +578,25 @@ void process_request(const int fd, String msg, const String ipv6_address) { // D
 	free_req_lines(reqlines);
 }
 
+// If line is only a newline, next line is post data?
+static void parse_post(char *msg) {
+	printf("%s\n", msg);
+
+	puts("1.5");
+	char *buf = strtok(msg, "\n");
+	puts("1");
+
+	while (strcmp(buf, "\n") != 0) {
+		puts("2");
+		buf = strtok(NULL, "\n");
+		puts("3");
+	}
+	puts("4");
+	buf = strtok(NULL, "\n");
+	puts("5");
+	printf("%s\n", buf);
+}
+
 int main(const int argc, String *const argv) {
 	char ipv6_address[INET6_ADDRSTRLEN];
 	int masterfd, newfd;
@@ -607,12 +659,30 @@ int main(const int argc, String *const argv) {
 		       "Log root is: %s\n"
 		       "Using: %s\n" RESET,
 		       _port, _doc_root, _log_root, sqlite_get_version());
+	puts("ZERO");
+	parse_post(
+	    "POST /login_submit HTTP/1.1\n"
+		"Host: 192.168.1.77:8888\n"
+		"Connection: keep-alive\n"
+		"Content-Length: 41\n"
+		"Cache-Control: max-age=0\n"
+		"Origin: http://192.168.1.77:8888\n"
+		"Upgrade-Insecure-Requests: 1\n"
+		"DNT: 1\n"
+		"Content-Type: application/x-www-form-urlencoded\n"
+		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
+		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
+		"Referer: http://192.168.1.77:8888/\n"
+		"Accept-Encoding: gzip, deflate\n"
+		"Accept-Language: en-US,en;q=0.9\n\n"
+		"name=aaa&email=qqq%40ddd.com&password=zzz"
+	);
 
 	sqlite_exec("SELECT * FROM test;");
 
 	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 
-	while (sigint_flag) {
+	while (_sigint_flag) {
 		_doc_root[default_root_len] = '\0';
 		newfd = accept(masterfd, &client_addr, &sin_size);
 
@@ -627,8 +697,10 @@ int main(const int argc, String *const argv) {
 
 		inet_ntop(AF_INET6, &(((struct sockaddr_in6*)&client_addr)->sin6_addr), ipv6_address, INET6_ADDRSTRLEN);
 
-		if (recv(newfd, msg, MSG_LEN, 0) > 0)
+		if (recv(newfd, msg, MSG_LEN, 0) > 0) {
+			fprintf(stderr, "MSG: %s\n", msg);
 			process_request(newfd, msg, ipv6_address);
+		}
 		else {
 			const String err_msg = strerror(errno);
 
