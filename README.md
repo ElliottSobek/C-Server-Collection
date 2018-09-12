@@ -22,13 +22,13 @@ These servers are build as a proof of concept and a challenge to myself. They ca
 
 ## Building
 
-If you are adding features or debugging a server run: make [debug]
+If you are adding features or debugging a server run: `make [debug]`
 
-If optimizing run: make profile
+If optimizing run: `make profile`
 
-* An alternative would be to compile the source code using: make [debug] and use the OProfile program.
+* An alternative would be to compile the source code using: `make [debug]` and use the OProfile program.
 
-If using for production run: make production
+If using for production run: `make production`
 
 ### Options
 
@@ -51,7 +51,7 @@ All servers follow a rolling log file implementation where logs follow the struc
 
 2. Given the C languange is a non object oriented language the use of a true database ORM is not possible. An intermediate knowledge if the SQL language is recommended when using the database API.
 
-3. These servers are custom build from the ground up and as such are not HTTP 1.1 or HTTP 1.0 compliant. With this said the servers follow closely HTTP 1.0.
+3. These servers are custom build from the ground up and, as such, are not HTTP 1.1 or HTTP 1.0 compliant. With this said, the servers follow closely the HTTP 1.0 specification.
 
 4. None of the servers are load balancing capable or implement connection timeouts.
 
