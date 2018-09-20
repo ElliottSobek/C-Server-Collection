@@ -578,24 +578,72 @@ void process_request(const int fd, String msg, const String ipv6_address) { // D
 	free_req_lines(reqlines);
 }
 
-// If line is only a newline, next line is post data?
-static void parse_post(char *msg) {
-	printf("%s\n", msg);
+void parse(void) {
+	char msg[2048] = "sam\ntim\ntom\n";
+	char *start, *end, *travel;
 
-	puts("1.5");
-	char *buf = strtok(msg, "\n");
-	puts("1");
+	start = msg;
 
-	while (strcmp(buf, "\n") != 0) {
-		puts("2");
-		buf = strtok(NULL, "\n");
-		puts("3");
+	while (*start != '\0') {
+		end = start;
+		travel = start;
+
+		while (*end != '\n')
+			end++;
+		char buf[2048];
+
+		for (int i = 0; i < (end - start); i++) {
+			buf[i] = *travel;
+			travel++;
+		}
+		end++;
+		start = end;
 	}
-	puts("4");
-	buf = strtok(NULL, "\n");
-	puts("5");
-	printf("%s\n", buf);
 }
+
+// If line is only a newline, next line is post data?
+// static void parse_post(char *msgs) {
+// 	char msg[1024] = "POST /login_submit HTTP/1.1\n"
+// 		"Host: 192.168.1.77:8888\n"
+// 		"Connection: keep-alive\n"
+// 		"Content-Length: 41\n"
+// 		"Cache-Control: max-age=0\n"
+// 		"Origin: http://192.168.1.77:8888\n"
+// 		"Upgrade-Insecure-Requests: 1\n"
+// 		"DNT: 1\n"
+// 		"Content-Type: application/x-www-form-urlencoded\n"
+// 		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
+// 		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
+// 		"Referer: http://192.168.1.77:8888/\n"
+// 		"Accept-Encoding: gzip, deflate\n"
+// 		"Accept-Language: en-US,en;q=0.9\n\n"
+// 		"name=aaa&email=qqq%40ddd.com&password=zzz";
+
+// 	char *buf = strtok(msg, "\n");
+
+// 	while (buf && (strncmp(buf, "\n", 1) != 0)) {
+// 		buf = strtok(NULL, "\n");
+
+// 		printf("buf: %s\n", buf);
+// 	}
+// }
+
+// MSG: POST /login HTTP/1.1
+// Content-Type: application/json
+// cache-control: no-cache
+// Postman-Token: 431ce3b4-8b85-49e5-927f-60d3c8acd133
+// User-Agent: PostmanRuntime/7.3.0
+// Accept: */*
+// Host: 192.168.1.73:8888
+// accept-encoding: gzip, deflate
+// content-length: 63
+// Connection: keep-alive
+// 
+// {
+        // "name": "aaa",
+        // "email": "qqq@ddd.com",
+        // "password": "zzz"
+// }
 
 int main(const int argc, String *const argv) {
 	char ipv6_address[INET6_ADDRSTRLEN];
@@ -659,24 +707,25 @@ int main(const int argc, String *const argv) {
 		       "Log root is: %s\n"
 		       "Using: %s\n" RESET,
 		       _port, _doc_root, _log_root, sqlite_get_version());
-	puts("ZERO");
-	parse_post(
-	    "POST /login_submit HTTP/1.1\n"
-		"Host: 192.168.1.77:8888\n"
-		"Connection: keep-alive\n"
-		"Content-Length: 41\n"
-		"Cache-Control: max-age=0\n"
-		"Origin: http://192.168.1.77:8888\n"
-		"Upgrade-Insecure-Requests: 1\n"
-		"DNT: 1\n"
-		"Content-Type: application/x-www-form-urlencoded\n"
-		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
-		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
-		"Referer: http://192.168.1.77:8888/\n"
-		"Accept-Encoding: gzip, deflate\n"
-		"Accept-Language: en-US,en;q=0.9\n\n"
-		"name=aaa&email=qqq%40ddd.com&password=zzz"
-	);
+	parse();
+	// puts("ZERO");
+	// parse_post(
+	//     "POST /login_submit HTTP/1.1\n"
+	// 	"Host: 192.168.1.77:8888\n"
+	// 	"Connection: keep-alive\n"
+	// 	"Content-Length: 41\n"
+	// 	"Cache-Control: max-age=0\n"
+	// 	"Origin: http://192.168.1.77:8888\n"
+	// 	"Upgrade-Insecure-Requests: 1\n"
+	// 	"DNT: 1\n"
+	// 	"Content-Type: application/x-www-form-urlencoded\n"
+	// 	"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
+	// 	"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
+	// 	"Referer: http://192.168.1.77:8888/\n"
+	// 	"Accept-Encoding: gzip, deflate\n"
+	// 	"Accept-Language: en-US,en;q=0.9\n\n"
+	// 	"name=aaa&email=qqq%40ddd.com&password=zzz"
+	// );
 
 	sqlite_exec("SELECT * FROM test;");
 
