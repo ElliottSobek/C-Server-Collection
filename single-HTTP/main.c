@@ -578,9 +578,10 @@ void process_request(const int fd, String msg, const String ipv6_address) { // D
 	free_req_lines(reqlines);
 }
 
-void parse(void) {
-	char msg[2048] = "sam\ntim\ntom\n";
-	char *start, *end, *travel;
+static void parse(void) {
+	char msg[2048] = "sam\ntim\ntom\n\nname=elliott&password=kind\n";
+	char *start, *end, *travel, *token, *key, *value, tmp[1024], *tmp2, buf[2048], *buf2;
+	HashTable ht = ht_create(DEFAULT_HT_S);
 
 	start = msg;
 
@@ -590,15 +591,41 @@ void parse(void) {
 
 		while (*end != '\n')
 			end++;
-		char buf[2048];
 
-		for (int i = 0; i < (end - start); i++) {
-			buf[i] = *travel;
-			travel++;
+		if (start == end) {
+			end++;
+			start = end;
+
+			end = start;
+			travel = start;
+
+			while (*end != '\n')
+				end++;
+
+			for (int i = 0; i < (end - start); i++) {
+				buf[i] = *travel;
+				travel++;
+			}
+
+			buf[(end - start) +1] = '\0';
+			buf2 = buf;
+
+			token = strtok_r(buf, "&", &buf2);
+
+			while (token) {
+				strncpy(tmp, token, 1024);
+				tmp2 = tmp;
+				key = strtok_r(tmp2, "=", &tmp2);
+				value = strtok_r(NULL, "=", &tmp2);
+				ht_insert(&ht, key, value);
+				token = strtok_r(NULL, "&", &buf2);
+			}
+			ht_print(ht);
 		}
 		end++;
-		start = end;
+		start = end; 
 	}
+	ht_destroy(ht);
 }
 
 // If line is only a newline, next line is post data?
