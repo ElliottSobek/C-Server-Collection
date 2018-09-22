@@ -577,9 +577,15 @@ void process_request(const int fd, String msg, const String ipv6_address) { // D
 	}
 	free_req_lines(reqlines);
 }
-
+// "Host: 192.168.1.77:8888\n"
+// 		"Connection: keep-alive\n"
+// 		"Content-Type: application/x-www-form-urlencoded\n\n"
+// 		"name=elliott&password=kind\n"
 static void parse(void) {
-	char msg[2048] = "sam\ntim\ntom\n\nname=elliott&password=kind\n";
+	char msg[2048] = "Host: 192.168.1.77:8888\n"
+		"Connection: keep-alive\n"
+		"Content-Type: application/x-www-form-urlencoded\n\n"
+		"name=elliott&password=kind\n";
 	char *start, *end, *travel, *token, *key, *value, tmp[1024], *tmp2, buf[2048], *buf2;
 	HashTable ht = ht_create(DEFAULT_HT_S);
 
@@ -607,10 +613,10 @@ static void parse(void) {
 				travel++;
 			}
 
-			buf[(end - start) +1] = '\0';
+			buf[end - start] = '\0';
 			buf2 = buf;
 
-			token = strtok_r(buf, "&", &buf2);
+			token = strtok_r(buf2, "&", &buf2);
 
 			while (token) {
 				strncpy(tmp, token, 1024);
@@ -621,6 +627,19 @@ static void parse(void) {
 				token = strtok_r(NULL, "&", &buf2);
 			}
 			ht_print(ht);
+		} else {
+			for (int i = 0; i < (end - start); i++) {
+				buf[i] = *travel;
+				travel++;
+			}
+
+			// buf[(end - start) + 1] = '\0';
+			buf[end - start] = '\0';
+			buf2 = buf;
+
+			key = strtok(buf2, ":");
+			value = strtok(NULL, " ");
+			ht_insert(&ht, key, value);
 		}
 		end++;
 		start = end; 
