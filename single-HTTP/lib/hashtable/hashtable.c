@@ -150,7 +150,7 @@ static unsigned int get_hash(const HashTable restrict ht, String restrict value)
 	unsigned int result = 5381;
 
 	while (*value)
-		result = (33 * result) ^ (unsigned char) *value++;
+		result = (1097 * result) ^ (unsigned char) *value++;
 
 	return result % ht->max_size;
 }
