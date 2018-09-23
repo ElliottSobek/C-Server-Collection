@@ -84,14 +84,6 @@ typedef enum {
 } _methods; // Worth typedeffing?
 
 static short get_method_type(const String restrict method) {
-	// _methods methods = UNKNOWN;
-
-	// if (strncmp("GET", method, 3) == 0)
-	// 	methods = GET;
-	// else if (strncmp("POST", method, 4) == 0)
-	// 	methods = POST;
-	// return methods;
-
 	if (strncmp("GET", method, 3) == 0)
 		return GET;
 	else if (strncmp("POST", method, 4) == 0)
@@ -577,16 +569,62 @@ void process_request(const int fd, String msg, const String ipv6_address) { // D
 	}
 	free_req_lines(reqlines);
 }
-// "Host: 192.168.1.77:8888\n"
-// 		"Connection: keep-alive\n"
-// 		"Content-Type: application/x-www-form-urlencoded\n\n"
-// 		"name=elliott&password=kind\n"
+
+static char decode_http_code(const unsigned short code) {
+	unsigned short codes[] = {0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2F, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x5B, 0x5C, 0x5D, 0x5E, 0x60, 0x7B, 0x7C, 0x7D, 0x7E};
+	char symbols[] = {' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '`', '{', '|', '}', '~'};
+	const size_t codes_len = sizeof(codes) / sizeof(unsigned short);
+
+	for (unsigned int i = 0; i < codes_len; i++)
+		if (code == codes[i])
+			return symbols[i];
+	return '\0';
+}
+
+static char decode_http_post(HashTable *ht, const String restrict data) {
+	char *buf2 = strdup(data);
+	char *token, *key, *value, *tmp2, tmp[1024];
+
+	token = strtok_r(buf2, "&", &buf2);
+
+	while (token) {
+		strncpy(tmp, token, 1024);
+		tmp2 = tmp;
+		key = strtok_r(tmp2, "=", &tmp2);
+		value = strtok_r(NULL, "=", &tmp2);
+		ht_insert(ht, key, value);
+		token = strtok_r(NULL, "&", &buf2);
+	}
+	ht_print(*ht);
+
+	printf("%X\n", (unsigned int)strtol("2A", NULL, 16));
+
+	if ('A' == '%')
+		decode_http_code(0x20);
+
+	return '\0';
+}
+
+static void decode_json_post(HashTable *ht, const String restrict data) {
+	puts("JSON");
+}
+
 static void parse(void) {
 	char msg[2048] = "Host: 192.168.1.77:8888\n"
 		"Connection: keep-alive\n"
-		"Content-Type: application/x-www-form-urlencoded\n\n"
-		"name=elliott&password=kind\n";
-	char *start, *end, *travel, *token, *key, *value, tmp[1024], *tmp2, buf[2048], *buf2;
+		"Content-Length: 41\n"
+		"Cache-Control: max-age=0\n"
+		"Origin: http://192.168.1.77:8888\n"
+		"Upgrade-Insecure-Requests: 1\n"
+		"DNT: 1\n"
+		"Content-Type: application/x-www-form-urlencoded\n"
+		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
+		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
+		"Referer: http://192.168.1.77:8888/\n"
+		"Accept-Encoding: gzip, deflate\n"
+		"Accept-Language: en-US,en;q=0.9\n\n"
+		"name=aaa&email=qqq%40ddd.com&password=zzz\n";
+	char *start, *end, *travel, *key, *value, buf[2048], *buf2, *content_type;
 	HashTable ht = ht_create(DEFAULT_HT_S);
 
 	start = msg;
@@ -598,8 +636,9 @@ static void parse(void) {
 		while (*end != '\n')
 			end++;
 
+		// Done header parsing
 		if (start == end) {
-			end++;
+			end++; // Data line start
 			start = end;
 
 			end = start;
@@ -613,27 +652,25 @@ static void parse(void) {
 				travel++;
 			}
 
-			buf[end - start] = '\0';
+			buf[end - start] = '\0'; // Data line end
 			buf2 = buf;
+			content_type = ht_get_value(ht, "Content-Type");
 
-			token = strtok_r(buf2, "&", &buf2);
-
-			while (token) {
-				strncpy(tmp, token, 1024);
-				tmp2 = tmp;
-				key = strtok_r(tmp2, "=", &tmp2);
-				value = strtok_r(NULL, "=", &tmp2);
-				ht_insert(&ht, key, value);
-				token = strtok_r(NULL, "&", &buf2);
+			if (!content_type) {
+				puts("Fail POST");
+			} else if (strncmp("application/x-www-form-urlencoded", content_type, STR_MAX) == 0) {
+				decode_http_post(&ht, buf2);
+			} else if (strncmp("application/json", content_type, STR_MAX) == 0) {
+				decode_json_post(&ht, buf2);
+			} else {
+				puts("Fail POST 2");
 			}
-			ht_print(ht);
 		} else {
 			for (int i = 0; i < (end - start); i++) {
 				buf[i] = *travel;
 				travel++;
 			}
 
-			// buf[(end - start) + 1] = '\0';
 			buf[end - start] = '\0';
 			buf2 = buf;
 
@@ -646,33 +683,6 @@ static void parse(void) {
 	}
 	ht_destroy(ht);
 }
-
-// If line is only a newline, next line is post data?
-// static void parse_post(char *msgs) {
-// 	char msg[1024] = "POST /login_submit HTTP/1.1\n"
-// 		"Host: 192.168.1.77:8888\n"
-// 		"Connection: keep-alive\n"
-// 		"Content-Length: 41\n"
-// 		"Cache-Control: max-age=0\n"
-// 		"Origin: http://192.168.1.77:8888\n"
-// 		"Upgrade-Insecure-Requests: 1\n"
-// 		"DNT: 1\n"
-// 		"Content-Type: application/x-www-form-urlencoded\n"
-// 		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
-// 		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
-// 		"Referer: http://192.168.1.77:8888/\n"
-// 		"Accept-Encoding: gzip, deflate\n"
-// 		"Accept-Language: en-US,en;q=0.9\n\n"
-// 		"name=aaa&email=qqq%40ddd.com&password=zzz";
-
-// 	char *buf = strtok(msg, "\n");
-
-// 	while (buf && (strncmp(buf, "\n", 1) != 0)) {
-// 		buf = strtok(NULL, "\n");
-
-// 		printf("buf: %s\n", buf);
-// 	}
-// }
 
 // MSG: POST /login HTTP/1.1
 // Content-Type: application/json
