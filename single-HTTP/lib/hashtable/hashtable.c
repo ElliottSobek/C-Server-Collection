@@ -112,7 +112,8 @@ static int s_ll_remove(const Ll restrict list, const String restrict key) {
 }
 
 static void s_ll_destroy(Ll restrict list) {
-	Ll_Node tmp, root = list->root;
+	Ll_Node restrict tmp;
+	Ll_Node root = list->root;
 
 	while (root) {
 		tmp = root;
