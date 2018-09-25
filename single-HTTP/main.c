@@ -583,25 +583,45 @@ static char decode_http_code(const unsigned short code) {
 
 static char decode_http_post(HashTable *ht, const String restrict data) {
 	char *buf2 = strdup(data);
-	char *token, *key, *value, *tmp2, tmp[1024];
+	char *token, *key, *value, *tmp2, tmp3[1024], tmp4[1024], tmp5[3], tmp[1024];
 
 	token = strtok_r(buf2, "&", &buf2);
 
 	while (token) {
+		for (unsigned int i = 0; i < 1024; i++) {
+			tmp3[i] = '\0';
+			tmp4[i] = '\0';
+		}
 		strncpy(tmp, token, 1024);
 		tmp2 = tmp;
 		key = strtok_r(tmp2, "=", &tmp2);
+
+		for (unsigned int i = 0, k = 0; i < strnlen(key, STR_MAX); i++, k++) {
+			if (key[i] == '%') {
+				tmp5[0] = key[i + 1];
+				tmp5[1] = key[i + 2];
+				tmp3[k] = decode_http_code(strtol(tmp5, NULL, 16));
+				i += 2;
+				continue;
+			}
+			tmp3[k] = key[i];
+		}
 		value = strtok_r(NULL, "=", &tmp2);
-		ht_insert(ht, key, value);
+
+		for (unsigned int i = 0, k = 0; i < strnlen(value, STR_MAX); i++, k++) {
+			if (value[i] == '%') {
+				tmp5[0] = value[i + 1];
+				tmp5[1] = value[i + 2];
+				tmp4[k] = decode_http_code(strtol(tmp5, NULL, 16));
+				i += 2;
+				continue;
+			}
+			tmp4[k] = value[i];
+		}
+		ht_insert(ht, tmp3, tmp4);
 		token = strtok_r(NULL, "&", &buf2);
 	}
 	ht_print(*ht);
-
-	printf("%X\n", (unsigned int)strtol("2A", NULL, 16));
-
-	if ('A' == '%')
-		decode_http_code(0x20);
-
 	return '\0';
 }
 
@@ -623,7 +643,7 @@ static void parse(void) {
 		"Referer: http://192.168.1.77:8888/\n"
 		"Accept-Encoding: gzip, deflate\n"
 		"Accept-Language: en-US,en;q=0.9\n\n"
-		"name=aaa&email=qqq%40ddd.com&password=zzz\n";
+		"na%24me=aaa&email=qqq%40ddd.com&password=zzz\n";
 	char *start, *end, *travel, *key, *value, buf[2048], *buf2, *content_type;
 	HashTable ht = ht_create(DEFAULT_HT_S);
 
