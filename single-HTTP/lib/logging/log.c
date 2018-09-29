@@ -44,12 +44,12 @@ void server_log(const String restrict msg) {
 
 	const int fd = open(log_dir, O_CREAT | O_WRONLY | O_APPEND, mode_f);
 
-	if ((fd == -1) && (verbose_flag))
+	if ((fd == -1) && (_verbose_flag))
 		printf(YELLOW "Logging File Error: %s\n" RESET, strerror(errno));
 	else
 		dprintf(fd, "[%s]: %s\n", f_time, msg);
 
-	if ((close(fd) == -1) && (verbose_flag))
+	if ((close(fd) == -1) && (_verbose_flag))
 		printf(YELLOW "Logging File Descriptor Error: %s\n" RESET, strerror(errno));
 
 	free(f_time);
