@@ -51,13 +51,9 @@
 #define HTTP_REQ_AMT 8
 #define REQLINE_TOKEN_AMT 4
 
-#define MSG_LEN 4096
-#define PORT_LEN 5
-#define GET_REQ_LEN 3
-#define PHP_EXT_LEN 4
-#define REQLINE_LEN 1024
-#define CONF_EXT_LEN 5
-#define HTTP_VER_LEN 8
+#define GET_METHOD_LEN 3
+#define POST_METHOD_LEN 4
+
 #define CODE_200_LEN 17
 #define CODE_400_LEN 26
 #define CODE_403_LEN 24
@@ -65,11 +61,17 @@
 #define CODE_500_LEN 36
 #define	CODE_501_LEN 30
 #define CODE_505_LEN 41
-#define HTTP_METHOD_LEN 7
-#define DEFAULT_PAGE_LEN 22
-#define MDEFAULT_PAGE_LEN 2
+
+#define MSG_LEN 4096
+#define PORT_LEN 5
+#define PHP_EXT_LEN 4
+#define REQLINE_LEN 1024
+#define CONF_EXT_LEN 5
+#define HTTP_VER_LEN 8
 #define CONNECTION_TEMPLATE_LEN 28
-#define IMPLEMENTED_HTTP_METHODS_LEN 2
+
+#define BASE_TEN 10
+#define BASE_SIXTEEN 16
 
 S_Ll _paths;
 char _port[PORT_LEN] = DEFAULT_PORT,
@@ -77,22 +79,8 @@ char _port[PORT_LEN] = DEFAULT_PORT,
 
 bool _sigint_flag = true;
 
-typedef enum {
-	UNKNOWN,
-	GET,
-	POST
-} _methods; // Worth typedeffing?
-
-static short get_method_type(const String restrict method) {
-	if (strncmp("GET", method, 3) == 0)
-		return GET;
-	else if (strncmp("POST", method, 4) == 0)
-		return POST;
-	return UNKNOWN;
-}
-
 static bool is_valid_port(void) { // Done
-	const int port_num = atoi(_port);
+	const int port_num = strtol(_port, NULL, BASE_TEN);
 
 	return ((PORT_MIN < port_num) && (port_num < PORT_MAX));
 }
@@ -313,7 +301,7 @@ static char decode_http_post(HashTable *ht, const String restrict data) {
 			if (key[i] == '%') {
 				tmp5[0] = key[i + 1];
 				tmp5[1] = key[i + 2];
-				tmp3[k] = decode_http_code(strtol(tmp5, NULL, 16));
+				tmp3[k] = decode_http_code(strtol(tmp5, NULL, BASE_SIXTEEN));
 				i += 2;
 				continue;
 			}
@@ -325,7 +313,7 @@ static char decode_http_post(HashTable *ht, const String restrict data) {
 			if (value[i] == '%') {
 				tmp5[0] = value[i + 1];
 				tmp5[1] = value[i + 2];
-				tmp4[k] = decode_http_code(strtol(tmp5, NULL, 16));
+				tmp4[k] = decode_http_code(strtol(tmp5, NULL, BASE_SIXTEEN));
 				i += 2;
 				continue;
 			}
@@ -517,34 +505,16 @@ static void respond(const int client_fd, String *const reqlines, const String pa
 		return;
 	}
 
-	const String restrict implemented_http_methods[IMPLEMENTED_HTTP_METHODS_LEN] = {"GET", "POST"};
-	bool in = false;
-
-	for (unsigned int i = 0; i < IMPLEMENTED_HTTP_METHODS_LEN; i++)
-		if (strncmp(reqlines[0], implemented_http_methods[i], HTTP_METHOD_LEN) == 0) {
-			in = true;
-			break;
-		}
-
-	if (!in) {
+	if (strncmp("GET", reqlines[0], GET_METHOD_LEN) == 0)
+		serve_get_request(client_fd, reqlines, path);
+	else if (strncmp("POST", reqlines[0], POST_METHOD_LEN) == 0)
+		process_post_request(client_fd, reqlines, path);
+	else {
 		if (_verbose_flag)
 			printf("%s %s [501 Not Implemented]\n", reqlines[0], reqlines[1]);
 		send(client_fd, NOT_IMPLEMENTED, CODE_501_LEN, 0);
 		send_file(client_fd, "partials/code-responses/501.html");
-		return;
 	}
-
-	const short method = get_method_type(reqlines[0]);
-
-	switch (method) {
-	case GET:
-		serve_get_request(client_fd, reqlines, path);
-		break;
-	case POST:
-		process_post_request(client_fd, reqlines, path);
-		break;
-	}
-	return;
 }
 
 static String *get_req_lines(String msg) { // Done
@@ -842,7 +812,7 @@ int main(const int argc, String *const argv) {
 
 		if (recv(newfd, msg, MSG_LEN, 0) > 0) {
 			if (_verbose_flag)
-				printf(CYAN "MSG: %s\n" RESET, msg);
+				printf(CYAN "MSG:\n%s\n" RESET, msg);
 			process_request(newfd, msg, ipv6_address);
 		}
 		else {
