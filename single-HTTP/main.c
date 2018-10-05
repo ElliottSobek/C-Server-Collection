@@ -272,8 +272,8 @@ static void send_file(const int client_fd, const String path) { // Done
 }
 
 static char decode_http_code(const unsigned short code) {
-	unsigned short codes[] = {0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2F, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x5B, 0x5C, 0x5D, 0x5E, 0x60, 0x7B, 0x7C, 0x7D, 0x7E};
-	char symbols[] = {' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '`', '{', '|', '}', '~'};
+	const unsigned short codes[] = {0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2F, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x5B, 0x5C, 0x5D, 0x5E, 0x60, 0x7B, 0x7C, 0x7D, 0x7E};
+	const char symbols[] = {' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '`', '{', '|', '}', '~'};
 	const size_t codes_len = sizeof(codes) / sizeof(unsigned short);
 
 	for (unsigned int i = 0; i < codes_len; i++)
@@ -282,7 +282,8 @@ static char decode_http_code(const unsigned short code) {
 	return '\0';
 }
 
-static char decode_http_post(HashTable *ht, const String restrict data) {
+static char decode_http_post(HashTable *ht, char *data) {
+	puts("--- OK ---");
 	char *buf2 = strdup(data);
 	char *token, *key, *value, *tmp2, tmp3[1024], tmp4[1024], tmp5[3], tmp[1024];
 
@@ -325,7 +326,7 @@ static char decode_http_post(HashTable *ht, const String restrict data) {
 	return '\0';
 }
 
-static char decode_json_post(HashTable *ht, const String restrict data) {
+static char decode_json_post(HashTable *ht, char *data) {
 	char *buf2 = strdup(data);
 	char *traveler = buf2, key[1024], value[1024];
 	unsigned short cpy_index = 0;
@@ -366,15 +367,13 @@ static char decode_json_post(HashTable *ht, const String restrict data) {
 }
 
 static HashTable parse_post_request(const String msg) {
-	unsigned short buf_count = 0;
-	char *start, *end, *travel, *key, *value, buf[2048], *buf2, *content_type;
+	unsigned short buf_count = 0, line_len;
+	char buffer[STR_MAX];
+	String start = msg, end, traveler;
 	HashTable data = ht_create(DEFAULT_HT_S);
 
-	start = msg;
-
-	while (*start != '\0') {
+	while ((*start != '\0') && (buf_count < STR_MAX)) {
 		end = start;
-		travel = start;
 
 		while ((*end != '\r') && (*end != '\n'))
 			end++;
@@ -382,61 +381,63 @@ static HashTable parse_post_request(const String msg) {
 		// Done header parsing
 		if (start == end) {
 			if (*end == '\r')
+				end += 2;
+			else
 				end++;
-			end++;
-			start = end;
-
+			start = end; // Extract below to function?
 			end = start;
-			travel = start;
 
-			while ((*end != '\0') && (buf_count < 1024)) {
+			while ((*end != '\0') && (buf_count < STR_MAX)) {
 				end++;
 				buf_count++;
 			}
+			line_len = end - start;
+			traveler = start;
 
-			for (int i = 0; i < (end - start); i++) {
-				buf[i] = *travel;
-				travel++;
+			for (unsigned int i = 0; i < line_len; i++) {
+				buffer[i] = *traveler;
+				traveler++;
 			}
-
-			buf[end - start] = '\0'; // Data line end
-			buf2 = buf;
-			content_type = ht_get_value(data, "Content-Type");
+			buffer[line_len] = '\0'; // Data line end
+			
+			String content_type = ht_get_value(data, "Content-Type");
 
 			if (!content_type) {
 				if (_verbose_flag)
 					puts(YELLOW "Header \"Content-Type\" not not found" RESET);
 				return NULL;
 			} else if (strncmp("application/x-www-form-urlencoded", content_type, STR_MAX) == 0) {
-				decode_http_post(&data, buf2);
+				decode_http_post(&data, buffer);
 			} else if (strncmp("application/json", content_type, STR_MAX) == 0) {
-				decode_json_post(&data, buf2);
+				decode_json_post(&data, buffer);
 			} else {
 				if (_verbose_flag)
 					printf(YELLOW "Content-Type \"%s\" not supported\n", content_type);
 				return NULL;
 			}
 		} else {
-			for (int i = 0; i < (end - start); i++) {
-				buf[i] = *travel;
-				travel++;
+			line_len = end - start;
+			traveler = start;
+
+			for (unsigned int i = 0; i < line_len; i++) {
+				buffer[i] = *traveler;
+				traveler++;
 			}
+			buffer[line_len] = '\0';
 
-			buf[end - start] = '\0';
-			buf2 = buf;
-
-			key = strtok(buf2, ":");
-			value = strtok(NULL, ":");
+			String key = strtok(buffer, ":"), value = strtok(NULL, ":");
 
 			while (*value == ' ')
 				value++;
 			ht_insert(&data, key, value);
 		}
 		if (*end == '\r')
+			end += 2;
+		else
 			end++;
-		end++;
 		start = end; 
 	}
+	ht_print(data);
 	return data;
 }
 
@@ -444,13 +445,17 @@ static void process_post_request(const int client_fd, String *const reqlines, co
 	HashTable data = parse_post_request(reqlines[3]);
 
 	if (data) {
-		ht_print(data);
+		if (_verbose_flag)
+			ht_print(data);
 		ht_destroy(data);
 	}
 
 	if (_verbose_flag)
 		printf(GREEN "POST %s [200 OK]\n" RESET, reqlines[1]);
-	send(client_fd, OK, CODE_200_LEN, 0);	
+	send(client_fd, OK, CODE_200_LEN, 0);
+
+	if ((close(client_fd) == -1) && (_verbose_flag))
+		printf(YELLOW "File Descriptor Post Error: %s\n" RESET, strerror(errno));
 }
 
 static void serve_get_request(const int client_fd, String *const reqlines, const String path) {
@@ -515,6 +520,7 @@ static void respond(const int client_fd, String *const reqlines, const String pa
 		send(client_fd, NOT_IMPLEMENTED, CODE_501_LEN, 0);
 		send_file(client_fd, "partials/code-responses/501.html");
 	}
+	return;
 }
 
 static String *get_req_lines(String msg) { // Done
@@ -748,6 +754,24 @@ int main(const int argc, String *const argv) {
 	}
 
 	compute_flags(argc, argv, &_verbose_flag);
+
+	parse_post_request(
+		"Host: 192.168.1.77:8888\n"
+		"Connection: keep-alive\n"
+		"Content-Length: 41\n"
+		"Cache-Control: max-age=0\n"
+		"Origin: http://192.168.1.77:8888\n"
+		"Upgrade-Insecure-Requests: 1\n"
+		"DNT: 1\n"
+		"Content-Type: application/x-www-form-urlencoded\n"
+		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
+		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
+		"Referer: http://192.168.1.77:8888/\n"
+		"Accept-Encoding: gzip, deflate\n"
+		"Accept-Language: en-US,en;q=0.9\n\n"
+		"name=aaa&email=qqq%40ddd.com&password=zzz\n"
+	);
+	return 0;
 	if (!is_valid_port()) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
 		exit(EXIT_FAILURE);
