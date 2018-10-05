@@ -428,7 +428,7 @@ static HashTable parse_post_request(const String msg) {
 			}
 			buffer[line_len] = '\0';
 
-			String key = strtok(buffer, ":"), value = strtok(NULL, ":");
+			String key = strtok(buffer, ":"), value = strtok(NULL, "\n");
 
 			while (*value == ' ')
 				value++;
@@ -756,24 +756,7 @@ int main(const int argc, String *const argv) {
 	}
 
 	compute_flags(argc, argv, &_verbose_flag);
-
-	// parse_post_request(
-	// 	"Host: 192.168.1.77:8888\n"
-	// 	"Connection: keep-alive\n"
-	// 	"Content-Length: 41\n"
-	// 	"Cache-Control: max-age=0\n"
-	// 	"Origin: http://192.168.1.77:8888\n"
-	// 	"Upgrade-Insecure-Requests: 1\n"
-	// 	"DNT: 1\n"
-	// 	"Content-Type: application/x-www-form-urlencoded\n"
-	// 	"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
-	// 	"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
-	// 	"Referer: http://192.168.1.77:8888/\n"
-	// 	"Accept-Encoding: gzip, deflate\n"
-	// 	"Accept-Language: en-US,en;q=0.9\n\n"
-	// 	"name=a%24aa&email=qqq%40ddd.com&pas%21sword=zzz\n"
-	// );
-	// return 0;
+	
 	if (!is_valid_port()) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
 		exit(EXIT_FAILURE);
@@ -817,8 +800,6 @@ int main(const int argc, String *const argv) {
 		       "Using: %s\n" RESET,
 		       _port, _doc_root, _log_root, sqlite_get_version());
 
-	// sqlite_exec("SELECT * FROM test;");
-
 	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 
 	while (_sigint_flag) {
@@ -838,10 +819,9 @@ int main(const int argc, String *const argv) {
 
 		if (recv(newfd, msg, MSG_LEN, 0) > 0) {
 			if (_verbose_flag)
-				printf(CYAN "MSG:\n%s\n" RESET, msg);
+				printf(CYAN "INBOUND MESSAGE:\n%s\n" RESET, msg);
 			process_request(newfd, msg, ipv6_address);
-		}
-		else {
+		} else {
 			const String err_msg = strerror(errno);
 
 			if (_verbose_flag)
