@@ -323,44 +323,47 @@ static char decode_http_post(HashTable *ht, String data) {
 	return '\0';
 }
 
-static char decode_json_post(HashTable *ht, char *data) {
+static char decode_json_post(HashTable *ht, String data) {
+	unsigned short buf_count = 0;
 	char buffer[STR_MAX];
-	char *traveler = buffer, key[1024], value[1024];
-	unsigned short cpy_index = 0;
+	String traveler = buffer;
 
 	strncpy(buffer, data, STR_MAX);
 
-	while (*traveler != '\0') {
-		for (unsigned int i = 0; i < 1024; i++) {
-			key[i] = '\0';
-			value[i] = '\0';
-		}
+	while ((*traveler != '\0') && (buf_count < STR_MAX)) {
+		unsigned short cpy_idx = 0;
+		char key[STR_MAX] = "", value[STR_MAX] = "";
+
 		// Key
-		while ((*traveler != '\"') && (*traveler != '\0')) {
+		while ((*traveler != '\"') && (*traveler != '\0') && (buf_count < STR_MAX))
 			traveler++;
-		}
-		if (*traveler == '\0')
+
+		if ((*traveler == '\0') || (buf_count > STR_MAX))
 				break;
 		traveler++;
 
-		while (*traveler != '\"') {
-			key[cpy_index] = *traveler;
+		while ((*traveler != '\"') && (buf_count < STR_MAX)) {
+			key[cpy_idx] = *traveler;
 			traveler++;
-			cpy_index++;
+			cpy_idx++;
 		}
 		traveler++;
-		cpy_index = 0;
+		cpy_idx = 0;
+
 		// Value
-		while (*traveler != '\"')
+		while ((*traveler != '\"') && (buf_count < STR_MAX))
 			traveler++;
+
+		if ((*traveler == '\0') || (buf_count > STR_MAX))
+			break;
 		traveler++;
-		while (*traveler != '\"') {
-			value[cpy_index] = *traveler;
+
+		while ((*traveler != '\"') && (buf_count < STR_MAX)) {
+			value[cpy_idx] = *traveler;
 			traveler++;
-			cpy_index++;
+			cpy_idx++;
 		}
 		traveler++;
-		cpy_index = 0;
 		ht_insert(ht, key, value);
 	}
 	return '\0';
@@ -437,7 +440,6 @@ static HashTable parse_post_request(const String msg) {
 			end++;
 		start = end; 
 	}
-	ht_print(data);
 	return data;
 }
 
@@ -755,23 +757,23 @@ int main(const int argc, String *const argv) {
 
 	compute_flags(argc, argv, &_verbose_flag);
 
-	parse_post_request(
-		"Host: 192.168.1.77:8888\n"
-		"Connection: keep-alive\n"
-		"Content-Length: 41\n"
-		"Cache-Control: max-age=0\n"
-		"Origin: http://192.168.1.77:8888\n"
-		"Upgrade-Insecure-Requests: 1\n"
-		"DNT: 1\n"
-		"Content-Type: application/x-www-form-urlencoded\n"
-		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
-		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
-		"Referer: http://192.168.1.77:8888/\n"
-		"Accept-Encoding: gzip, deflate\n"
-		"Accept-Language: en-US,en;q=0.9\n\n"
-		"name=a%24aa&email=qqq%40ddd.com&pas%21sword=zzz\n"
-	);
-	return 0;
+	// parse_post_request(
+	// 	"Host: 192.168.1.77:8888\n"
+	// 	"Connection: keep-alive\n"
+	// 	"Content-Length: 41\n"
+	// 	"Cache-Control: max-age=0\n"
+	// 	"Origin: http://192.168.1.77:8888\n"
+	// 	"Upgrade-Insecure-Requests: 1\n"
+	// 	"DNT: 1\n"
+	// 	"Content-Type: application/x-www-form-urlencoded\n"
+	// 	"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36\n"
+	// 	"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8\n"
+	// 	"Referer: http://192.168.1.77:8888/\n"
+	// 	"Accept-Encoding: gzip, deflate\n"
+	// 	"Accept-Language: en-US,en;q=0.9\n\n"
+	// 	"name=a%24aa&email=qqq%40ddd.com&pas%21sword=zzz\n"
+	// );
+	// return 0;
 	if (!is_valid_port()) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
 		exit(EXIT_FAILURE);
