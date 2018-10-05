@@ -126,7 +126,7 @@ int sqlite_exec(const String restrict stmt, ...) {
     result_code = sqlite3_prepare_v2(db, query->stmt, KBYTE_S * 2, &sql_byte_code, NULL);
 
     if (result_code != SQLITE_OK) {
-        if (verbose_flag)
+        if (_verbose_flag)
             fprintf(stderr, YELLOW "SQL error: %s\n" RESET, sqlite3_errmsg(db));
         sqlite3_finalize(sql_byte_code);
         sqlite3_close(db);
@@ -175,7 +175,7 @@ int sqlite_exec(const String restrict stmt, ...) {
     } else {
         sqlite3_step(sql_byte_code);
 
-        if (verbose_flag)
+        if (_verbose_flag)
             printf("Rows affected: %d\n", sqlite3_changes(db));
     }
     destroy_query(query);

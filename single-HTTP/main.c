@@ -49,15 +49,11 @@
 #define PACKET_MAX 1024
 #define HTTP_VER_AMT 3
 #define HTTP_REQ_AMT 8
-#define REQLINE_TOKEN_AMT 3
+#define REQLINE_TOKEN_AMT 4
 
-#define MSG_LEN 4096
-#define PORT_LEN 5
-#define GET_REQ_LEN 3
-#define PHP_EXT_LEN 4
-#define REQLINE_LEN 128
-#define CONF_EXT_LEN 5
-#define HTTP_VER_LEN 8
+#define GET_METHOD_LEN 3
+#define POST_METHOD_LEN 4
+
 #define CODE_200_LEN 17
 #define CODE_400_LEN 26
 #define CODE_403_LEN 24
@@ -65,25 +61,31 @@
 #define CODE_500_LEN 36
 #define	CODE_501_LEN 30
 #define CODE_505_LEN 41
-#define HTTP_METHOD_LEN 7
-#define DEFAULT_PAGE_LEN 22
-#define MDEFAULT_PAGE_LEN 2
+
+#define MSG_LEN 4096
+#define PORT_LEN 5
+#define PHP_EXT_LEN 4
+#define REQLINE_LEN 1024
+#define CONF_EXT_LEN 5
+#define HTTP_VER_LEN 8
 #define CONNECTION_TEMPLATE_LEN 28
-#define IMPLEMENTED_HTTP_METHODS_LEN 2
+
+#define BASE_TEN 10
+#define BASE_SIXTEEN 16
 
 S_Ll _paths;
 char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT;
 
-bool sigint_flag = true;
+bool _sigint_flag = true;
 
-bool is_valid_port(void) { // Done
-	const int port_num = atoi(_port);
+static bool is_valid_port(void) { // Done
+	const int port_num = strtol(_port, NULL, BASE_TEN);
 
 	return ((PORT_MIN < port_num) && (port_num < PORT_MAX));
 }
 
-bool is_valid_request(String *const reqline) { // Done
+static bool is_valid_request(String *const reqline) { // Done
 	const String restrict http_methods[HTTP_REQ_AMT] = {
 		"GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE"
 	};
@@ -101,7 +103,7 @@ bool is_valid_request(String *const reqline) { // Done
 	return false;
 }
 
-String clean_config_line(String string) { // Done
+static String clean_config_line(String string) { // Done
 
 	while (*string < 'a' || *string > 'z')
 		string++;
@@ -115,17 +117,17 @@ String clean_config_line(String string) { // Done
 	return string;
 }
 
-void load_configuration(const String path) { // Done
+static void load_configuration(const String path) { // Done
 	const String extension = strrchr(path, '.');
 
 	if (!extension) {
-		if (verbose_flag)
+		if (_verbose_flag)
 			puts(YELLOW "File Warning: -s option was not supplied a file" RESET);
 		return;
 	}
 
 	if (strncmp(extension, ".conf", CONF_EXT_LEN) != 0) {
-		if (verbose_flag)
+		if (_verbose_flag)
 			puts(YELLOW "File Warning: -s option takes a configuration file as an argument\n"
 			       "Using default parameter values" RESET);
 		return;
@@ -135,7 +137,7 @@ void load_configuration(const String path) { // Done
 	String line = "", defn = "", value = "";
 	FILE *conf_f = fopen(path, "r");
 
-	if ((!conf_f) && (verbose_flag))
+	if ((!conf_f) && (_verbose_flag))
 		printf(YELLOW "File Error: %s\nUsing default parameter values\n" RESET, strerror(errno));
 	else {
 		HashTable hashtable = ht_create(DEFAULT_HT_S);
@@ -155,11 +157,11 @@ void load_configuration(const String path) { // Done
 		strncpy(_db_path, ht_get_value(hashtable, "database_path"), PATH_MAX);
 		ht_destroy(hashtable);
 	}
-	if ((fclose(conf_f) != 0) && (verbose_flag))
+	if ((fclose(conf_f) != 0) && (_verbose_flag))
 		printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
-void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
+static void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	int c;
 	uid_t euid;
 	gid_t egid;
@@ -215,13 +217,13 @@ void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	}
 }
 
-void process_php(const int client_fd, const String file_path) { // Done
+static void process_php(const int client_fd, const String file_path) { // Done
 	const pid_t c_pid = fork();
 
 	if (c_pid == -1) {
 		const String err_msg = strerror(errno);
 
-		if (verbose_flag)
+		if (_verbose_flag)
 			printf(YELLOW "Process Forking Error: %s\n" RESET, err_msg);
 		server_log(err_msg);
 	}
@@ -230,17 +232,17 @@ void process_php(const int client_fd, const String file_path) { // Done
 		dup2(client_fd, STDOUT_FILENO);
 		execl("/usr/bin/php", "php", file_path, (String) NULL);
 	}
-	if ((close(client_fd) == -1) && (verbose_flag))
+	if ((close(client_fd) == -1) && (_verbose_flag))
 		printf(YELLOW "File Descriptor Error 3: %s\n" RESET, strerror(errno));
 }
 
-void send_file(const int client_fd, const String path) { // Done
+static void send_file(const int client_fd, const String path) { // Done
 	const int fd = open(path, O_RDONLY);
 
 	if (fd == -1) {
 		const String err_msg = strerror(errno);
 
-		if (verbose_flag)
+		if (_verbose_flag)
 			printf(YELLOW "Serve File Error: %s\n" RESET, err_msg);
 		server_log(err_msg);
 	} else {
@@ -262,54 +264,210 @@ void send_file(const int client_fd, const String path) { // Done
 		f_contents = NULL;
 	}
 
-	if ((close(fd) == -1) && (verbose_flag))
+	if ((close(fd) == -1) && (_verbose_flag))
 		printf(YELLOW "Copy File Descriptor Error: %s\n" RESET, strerror(errno));
 
-	if ((close(client_fd) == -1) && (verbose_flag))
+	if ((close(client_fd) == -1) && (_verbose_flag))
 		printf(YELLOW "Serve File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
-void respond(const int client_fd, String *const reqlines, const String path) { // Done
-	if (!is_valid_request(reqlines)) {
-		if (verbose_flag)
-			printf("%s %s [400 Bad Request]\n", reqlines[0], reqlines[1]);
-		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
-		send_file(client_fd, "partials/code-responses/400.html");
-		return;
-	}
+static char decode_http_code(const unsigned short code) {
+	const unsigned short codes[] = {0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2F, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x5B, 0x5C, 0x5D, 0x5E, 0x60, 0x7B, 0x7C, 0x7D, 0x7E};
+	const char symbols[] = {' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '`', '{', '|', '}', '~'};
+	const size_t codes_len = sizeof(codes) / sizeof(unsigned short);
 
-	if (strncmp(reqlines[2], "HTTP/2.0", HTTP_VER_LEN) == 0) {
-		if (verbose_flag)
-			printf("GET %s %s [505 Http Version Not Supported]\n", reqlines[1], reqlines[2]);
-		send(client_fd, NOT_SUPPORTED, CODE_505_LEN, 0);
-		send_file(client_fd, "partials/code-responses/505.html");
-		return;
-	}
+	for (unsigned int i = 0; i < codes_len; i++)
+		if (code == codes[i])
+			return symbols[i];
+	return '\0';
+}
 
-	const String restrict implemented_http_methods[IMPLEMENTED_HTTP_METHODS_LEN] = {"GET", "POST"};
-	bool in = false;
+static char decode_http_post(HashTable *ht, String data) {
+	char key_pair_wb[STR_MAX];
+	String key_pair_buffer = key_pair_wb, key_pair;
 
-	for (unsigned int i = 0; i < IMPLEMENTED_HTTP_METHODS_LEN; i++)
-		if (strncmp(reqlines[0], implemented_http_methods[i], HTTP_METHOD_LEN) == 0) {
-			in = true;
-			break;
+	strncpy(key_pair_wb, data, STR_MAX);
+	key_pair = strtok_r(key_pair_buffer, "&", &key_pair_buffer);
+
+	while (key_pair) {
+		char http_code_str[3];
+		String key = strtok_r(key_pair, "=", &key_pair);
+		size_t key_len = strnlen(key, STR_MAX);
+
+		for (unsigned int i = 0; i < key_len; i++) {
+			if (key[i] == '%') {
+				http_code_str[0] = key[i + 1];
+				http_code_str[1] = key[i + 2];
+				memmove(&key[i], &key[i + 2], key_len - 2);
+				key[i] = decode_http_code(strtol(http_code_str, NULL, BASE_SIXTEEN));
+				key_len -= 2;
+				continue;
+			}
 		}
+		String value = strtok_r(NULL, "=", &key_pair);
+		size_t value_len = strnlen(value, STR_MAX);
 
-	if (!in) {
-		if (verbose_flag)
-			printf("%s %s [501 Not Implemented]\n", reqlines[0], reqlines[1]);
-		send(client_fd, NOT_IMPLEMENTED, CODE_501_LEN, 0);
-		send_file(client_fd, "partials/code-responses/501.html");
-		return;
+		for (unsigned int i = 0; i < value_len; i++) {
+			if (value[i] == '%') {
+				http_code_str[0] = value[i + 1];
+				http_code_str[1] = value[i + 2];
+				memmove(&value[i], &value[i + 2], value_len - 2);
+				value[i] = decode_http_code(strtol(http_code_str, NULL, BASE_SIXTEEN));
+				value_len -= 2;
+				continue;
+			}
+		}
+		ht_insert(ht, key, value);
+		key_pair = strtok_r(NULL, "&", &key_pair_buffer);
+	}
+	return '\0';
+}
+
+static char decode_json_post(HashTable *ht, String data) {
+	unsigned short buf_count = 0;
+	char buffer[STR_MAX];
+	String traveler = buffer;
+
+	strncpy(buffer, data, STR_MAX);
+
+	while ((*traveler != '\0') && (buf_count < STR_MAX)) {
+		unsigned short cpy_idx = 0;
+		char key[STR_MAX] = "", value[STR_MAX] = "";
+
+		// Key
+		while ((*traveler != '\"') && (*traveler != '\0') && (buf_count < STR_MAX))
+			traveler++;
+
+		if ((*traveler == '\0') || (buf_count > STR_MAX))
+				break;
+		traveler++;
+
+		while ((*traveler != '\"') && (buf_count < STR_MAX)) {
+			key[cpy_idx] = *traveler;
+			traveler++;
+			cpy_idx++;
+		}
+		traveler++;
+		cpy_idx = 0;
+
+		// Value
+		while ((*traveler != '\"') && (buf_count < STR_MAX))
+			traveler++;
+
+		if ((*traveler == '\0') || (buf_count > STR_MAX))
+			break;
+		traveler++;
+
+		while ((*traveler != '\"') && (buf_count < STR_MAX)) {
+			value[cpy_idx] = *traveler;
+			traveler++;
+			cpy_idx++;
+		}
+		traveler++;
+		ht_insert(ht, key, value);
+	}
+	return '\0';
+}
+
+static HashTable parse_post_request(const String msg) {
+	unsigned short buf_count = 0, line_len;
+	char buffer[STR_MAX];
+	String start = msg, end, traveler;
+	HashTable data = ht_create(DEFAULT_HT_S);
+
+	while ((*start != '\0') && (buf_count < STR_MAX)) {
+		end = start;
+
+		while ((*end != '\r') && (*end != '\n'))
+			end++;
+
+		// Done header parsing
+		if (start == end) {
+			if (*end == '\r')
+				end += 2;
+			else
+				end++;
+			start = end; // Extract below to function?
+			end = start;
+
+			while ((*end != '\0') && (buf_count < STR_MAX)) {
+				end++;
+				buf_count++;
+			}
+			line_len = end - start;
+			traveler = start;
+
+			for (unsigned int i = 0; i < line_len; i++) {
+				buffer[i] = *traveler;
+				traveler++;
+			}
+			buffer[line_len] = '\0'; // Data line end
+
+			String content_type = ht_get_value(data, "Content-Type");
+
+			if (!content_type) {
+				if (_verbose_flag)
+					puts(YELLOW "Header \"Content-Type\" not not found" RESET);
+				return NULL;
+			} else if (strncmp("application/x-www-form-urlencoded", content_type, STR_MAX) == 0) {
+				decode_http_post(&data, buffer);
+			} else if (strncmp("application/json", content_type, STR_MAX) == 0) {
+				decode_json_post(&data, buffer);
+			} else {
+				if (_verbose_flag)
+					printf(YELLOW "Content-Type \"%s\" not supported\n", content_type);
+				return NULL;
+			}
+		} else {
+			line_len = end - start;
+			traveler = start;
+
+			for (unsigned int i = 0; i < line_len; i++) {
+				buffer[i] = *traveler;
+				traveler++;
+			}
+			buffer[line_len] = '\0';
+
+			String key = strtok(buffer, ":"), value = strtok(NULL, "\n");
+
+			while (*value == ' ')
+				value++;
+			ht_insert(&data, key, value);
+		}
+		if (*end == '\r')
+			end += 2;
+		else
+			end++;
+		start = end; 
+	}
+	return data;
+}
+
+static void process_post_request(const int client_fd, String *const reqlines, const String path) {
+	HashTable data = parse_post_request(reqlines[3]);
+
+	if (data) {
+		if (_verbose_flag)
+			ht_print(data);
+		ht_destroy(data);
 	}
 
+	if (_verbose_flag)
+		printf(GREEN "POST %s [200 OK]\n" RESET, reqlines[1]);
+	send(client_fd, OK, CODE_200_LEN, 0);
+
+	if ((close(client_fd) == -1) && (_verbose_flag))
+		printf(YELLOW "File Descriptor Post Error: %s\n" RESET, strerror(errno));
+}
+
+static void serve_get_request(const int client_fd, String *const reqlines, const String path) {
 	const int fd = open(path, O_RDONLY);
 
 	if (fd != -1) {
-		if ((close(fd) == -1) && (verbose_flag))
+		if ((close(fd) == -1) && (_verbose_flag))
 			printf(YELLOW "File Descriptor Error 1: %s\n" RESET, strerror(errno));
 
-		if (verbose_flag)
+		if (_verbose_flag)
 			printf(GREEN "GET %s [200 OK]\n" RESET, reqlines[1]);
 		send(client_fd, OK, CODE_200_LEN, 0);
 		const String extension = strrchr(path, '.');
@@ -318,28 +476,56 @@ void respond(const int client_fd, String *const reqlines, const String path) { /
 			process_php(client_fd, path);
 		else
 			send_file(client_fd, path);
-	}
-	else if (errno == ENOENT) {
-		if (verbose_flag)
+	} else if (errno == ENOENT) {
+		if (_verbose_flag)
 			printf("GET %s [404 Not Found]\n", reqlines[1]);
 		send(client_fd, NOT_FOUND, CODE_404_LEN, 0);
 		send_file(client_fd, "partials/code-responses/404.html");
-	}
-	else if (errno == EACCES) {
-		if (verbose_flag)
+	} else if (errno == EACCES) {
+		if (_verbose_flag)
 			printf(YELLOW "GET %s [403 Access Denied]\n" RESET, reqlines[1]);
 		send(client_fd, FORBIDDEN, CODE_403_LEN, 0);
 		send_file(client_fd, "partials/code-responses/403.html");
-	}
-	else {
-		if (verbose_flag)
+	} else {
+		if (_verbose_flag)
 			printf(RED "GET %s [500 Internal Server Error]\n" RESET, reqlines[1]);
 		send(client_fd, SERVER_ERROR, CODE_500_LEN, 0);
 		send_file(client_fd, "partials/code-responses/500.html");
 	}
+	return;
 }
 
-String *get_req_lines(String msg) { // Done
+static void respond(const int client_fd, String *const reqlines, const String path) {
+	if (!is_valid_request(reqlines)) {
+		if (_verbose_flag)
+			printf("%s %s [400 Bad Request]\n", reqlines[0], reqlines[1]);
+		send(client_fd, BAD_REQUEST, CODE_400_LEN, 0);
+		send_file(client_fd, "partials/code-responses/400.html");
+		return;
+	}
+
+	if (strncmp(reqlines[2], "HTTP/2.0", HTTP_VER_LEN) == 0) {
+		if (_verbose_flag)
+			printf("GET %s %s [505 Http Version Not Supported]\n", reqlines[1], reqlines[2]);
+		send(client_fd, NOT_SUPPORTED, CODE_505_LEN, 0);
+		send_file(client_fd, "partials/code-responses/505.html");
+		return;
+	}
+
+	if (strncmp("GET", reqlines[0], GET_METHOD_LEN) == 0)
+		serve_get_request(client_fd, reqlines, path);
+	else if (strncmp("POST", reqlines[0], POST_METHOD_LEN) == 0)
+		process_post_request(client_fd, reqlines, path);
+	else {
+		if (_verbose_flag)
+			printf("%s %s [501 Not Implemented]\n", reqlines[0], reqlines[1]);
+		send(client_fd, NOT_IMPLEMENTED, CODE_501_LEN, 0);
+		send_file(client_fd, "partials/code-responses/501.html");
+	}
+	return;
+}
+
+static String *get_req_lines(String msg) { // Done
 	String *const reqline = (String*) malloc(REQLINE_TOKEN_AMT * sizeof(String));
 
 	if (!reqline) {
@@ -374,10 +560,17 @@ String *get_req_lines(String msg) { // Done
 		return NULL;
 
 	strncpy(reqline[2], tok, (strnlen(tok, STR_MAX) + NT_LEN));
+
+	tok = strtok(NULL, "\0");
+
+	if (!tok)
+		return NULL;
+	strncpy(reqline[3], tok, (strnlen(tok, STR_MAX) + NT_LEN));
+
 	return reqline;
 }
 
-void free_req_lines(String *reqline) { // Done
+static void free_req_lines(String *reqline) { // Done
 	if (!reqline)
 		return;
 	for (int i = 0; i < REQLINE_TOKEN_AMT; i++) {
@@ -390,22 +583,23 @@ void free_req_lines(String *reqline) { // Done
 	reqline = NULL;
 }
 
-void init_url_paths() {
+static void init_url_paths(void) {
 	s_ll_insert(_paths, "/", "static/html/index.html");
 	s_ll_insert(_paths, "/index", "static/html/index.html");
+	s_ll_insert(_paths, "/home", "static/html/index.html");
 	s_ll_insert(_paths, "/login", "views/login.php");
 	s_ll_insert(_paths, "/contact", "static/html/contact.html");
 	s_ll_insert(_paths, "/forbidden", "static/html/forbidden.html");
 }
 
-void init_addrinfo(struct addrinfo *const addressinfo) { // Done
+static void init_addrinfo(struct addrinfo *const addressinfo) { // Done
 	memset(addressinfo, 0, sizeof(*addressinfo));
 	(*addressinfo).ai_family = AF_INET6; // IPV4 & IPV6
 	(*addressinfo).ai_socktype = SOCK_STREAM; // TCP
 	(*addressinfo).ai_flags = AI_PASSIVE; // Gen socket
 }
 
-int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Done
+static int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Done
 	const short yes = 1;
 	const struct addrinfo *p;
 
@@ -413,7 +607,7 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 		*socketfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
 
 		if (*socketfd == -1) {
-			if (verbose_flag)
+			if (_verbose_flag)
 				printf(YELLOW "Socket Init Error: %s\n" RESET, strerror(errno));
 			continue;
 		}
@@ -424,9 +618,9 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 		}
 
 		if (bind(*socketfd, p->ai_addr, p->ai_addrlen) == -1) {
-			if (verbose_flag)
+			if (_verbose_flag)
 				printf(YELLOW "Bind Error: %s\n" RESET, strerror(errno));
-			if ((close(*socketfd) == -1) && (verbose_flag))
+			if ((close(*socketfd) == -1) && (_verbose_flag))
 				printf(YELLOW "Bind File Descriptor Error: %s\n" RESET, strerror(errno));
 			continue;
 		}
@@ -443,11 +637,11 @@ int get_socket(int *const socketfd, struct addrinfo *const serviceinfo) { // Don
 
 }
 
-void handle_sigint(const int arg) { // Done
-	sigint_flag = false;
+static void handle_sigint(const int arg) { // Done
+	_sigint_flag = false;
 }
 
-void init_signals(void) { // Done
+static void init_signals(void) { // Done
 	struct sigaction new_action_int;
 
 	new_action_int.sa_handler = handle_sigint;
@@ -461,7 +655,7 @@ void init_signals(void) { // Done
 	}
 }
 
-bool is_image(const String restrict extension) {
+static bool is_image(const String restrict extension) {
 	const String img_ext[] = {".png", ".jpg", ".jpeg", ".tiff", ".gif", ".bmp", ".svg", ".ico"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
@@ -471,7 +665,7 @@ bool is_image(const String restrict extension) {
 	return false;
 }
 
-bool is_audio(const String restrict extension) {
+static bool is_audio(const String restrict extension) {
 	const String img_ext[] = {".wav", ".flac", ".opus", ".mp3", ".aac", ".ogg", ".pcm", ".aiff", ".wma", ".alac"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
@@ -481,7 +675,7 @@ bool is_audio(const String restrict extension) {
 	return false;
 }
 
-bool is_video(const String restrict extension) {
+static bool is_video(const String restrict extension) {
 	const String img_ext[] = {".mp4", ".mov", ".avi", ".flv", ".wmv"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
@@ -491,7 +685,7 @@ bool is_video(const String restrict extension) {
 	return false;
 }
 
-bool is_binary(const String restrict extension) {
+static bool is_binary(const String restrict extension) {
 	const String img_ext[] = {".exe", ".img", ".bin"};
 	const size_t img_ext_len = sizeof(img_ext) / sizeof(String);
 
@@ -501,14 +695,14 @@ bool is_binary(const String restrict extension) {
 	return false;
 }
 
-void process_request(const int fd, String msg, const String ipv6_address) { // Done
+static void process_request(const int fd, String msg, const String ipv6_address) { // Done
 	char con_msg[CONNECTION_TEMPLATE_LEN + PATH_MAX],
 		 **const reqlines = get_req_lines(msg);
 
 	if (!reqlines) {
 		snprintf(con_msg, CONNECTION_TEMPLATE_LEN + INET6_ADDRSTRLEN, "Connection from %s; BAD REQUEST", ipv6_address);
 
-		if (verbose_flag)
+		if (_verbose_flag)
 			printf(YELLOW "%s\n" RESET, con_msg);
 		server_log(con_msg);
 		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
@@ -531,12 +725,11 @@ void process_request(const int fd, String msg, const String ipv6_address) { // D
 			else if (is_audio(extension))
 				strncat(_doc_root, "static/audio/", PATH_MAX);
 			strncat(_doc_root, reqlines[1], PATH_MAX);
-		}
-		else if ((data = s_ll_find(_paths, reqlines[1])))
+		} else if ((data = s_ll_find(_paths, reqlines[1])))
 			strncat(_doc_root, data->path, PATH_MAX);
 		snprintf(con_msg, CONNECTION_TEMPLATE_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv6_address, reqlines[1]);
 
-		if (verbose_flag)
+		if (_verbose_flag)
 			printf("%s\n", con_msg);
 		server_log(con_msg);
 		respond(fd, reqlines, _doc_root);
@@ -552,7 +745,6 @@ int main(const int argc, String *const argv) {
 	socklen_t sin_size = sizeof(client_addr); // Does this change with every connection?
 	const mode_t mode_d = 0770;
 
-	verbose_flag = true;
 	_paths = s_ll_create();
 	strncpy(_log_root, DEFAULT_LOG_ROOT, PATH_MAX);
 	strncpy(_db_path, DEFAULT_DB_ROOT, PATH_MAX);
@@ -563,13 +755,14 @@ int main(const int argc, String *const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	compute_flags(argc, argv, &verbose_flag);
+	compute_flags(argc, argv, &_verbose_flag);
+	
 	if (!is_valid_port()) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
 		exit(EXIT_FAILURE);
 	}
 
-	if ((mkdir(_log_root, mode_d) == -1) && (verbose_flag))
+	if ((mkdir(_log_root, mode_d) == -1) && (_verbose_flag))
 		if (errno != EEXIST) {
 			printf("Log Directory Error: %s\n", strerror(errno));
 			exit(EXIT_FAILURE);
@@ -599,7 +792,7 @@ int main(const int argc, String *const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	if (verbose_flag)
+	if (_verbose_flag)
 		printf(GREEN "Initialization: SUCCESS;\n"
 		       "Listening on port: %s\n"
 		       "Root directory is: %s\n"
@@ -607,18 +800,16 @@ int main(const int argc, String *const argv) {
 		       "Using: %s\n" RESET,
 		       _port, _doc_root, _log_root, sqlite_get_version());
 
-	sqlite_exec("SELECT * FROM test;");
-
 	const int default_root_len = strnlen(_doc_root, PATH_MAX);
 
-	while (sigint_flag) {
+	while (_sigint_flag) {
 		_doc_root[default_root_len] = '\0';
 		newfd = accept(masterfd, &client_addr, &sin_size);
 
 		if (newfd == -1) {
 			const String err_msg = strerror(errno);
 
-			if (verbose_flag)
+			if (_verbose_flag)
 				printf(YELLOW "Accept Error: %s\n" RESET, err_msg);
 			server_log(err_msg);
 			continue;
@@ -626,19 +817,21 @@ int main(const int argc, String *const argv) {
 
 		inet_ntop(AF_INET6, &(((struct sockaddr_in6*)&client_addr)->sin6_addr), ipv6_address, INET6_ADDRSTRLEN);
 
-		if (recv(newfd, msg, MSG_LEN, 0) > 0)
+		if (recv(newfd, msg, MSG_LEN, 0) > 0) {
+			if (_verbose_flag)
+				printf(CYAN "INBOUND MESSAGE:\n%s\n" RESET, msg);
 			process_request(newfd, msg, ipv6_address);
-		else {
+		} else {
 			const String err_msg = strerror(errno);
 
-			if (verbose_flag)
+			if (_verbose_flag)
 				printf(YELLOW "Inboud Data Read Error: %s\n" RESET, err_msg);
 			server_log(err_msg);
 		}
 	}
 	s_ll_destroy(_paths);
 
-	if ((close(masterfd) == -1) && (verbose_flag))
+	if ((close(masterfd) == -1) && (_verbose_flag))
 		printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
 	free(msg);
 	msg = NULL;

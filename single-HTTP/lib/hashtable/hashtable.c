@@ -112,7 +112,8 @@ static int s_ll_remove(const Ll restrict list, const String restrict key) {
 }
 
 static void s_ll_destroy(Ll restrict list) {
-	Ll_Node tmp, root = list->root;
+	Ll_Node restrict tmp;
+	Ll_Node root = list->root;
 
 	while (root) {
 		tmp = root;
@@ -150,7 +151,7 @@ static unsigned int get_hash(const HashTable restrict ht, String restrict value)
 	unsigned int result = 5381;
 
 	while (*value)
-		result = (33 * result) ^ (unsigned char) *value++;
+		result = (1097 * result) ^ (unsigned char) *value++;
 
 	return result % ht->max_size;
 }
