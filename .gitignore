@@ -30,6 +30,7 @@
 single-HTTP/single-HTTP-debug
 single-HTTP/single-HTTP-profile
 single-HTTP/single-HTTP
+single-HTTP/single-HTTP-cross
 
 # Debug files
 *.dSYM/
