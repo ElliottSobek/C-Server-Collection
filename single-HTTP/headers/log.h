@@ -1,7 +1,7 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include "../types/types.h"
+#include "types.h"
 
 extern void server_log(const String restrict);
 

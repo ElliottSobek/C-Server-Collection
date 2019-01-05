@@ -10,11 +10,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "../../globals.h"
-#include "../types/types.h"
-#include "../colors/colors.h"
+#include "globals.h"
+#include "types.h"
+#include "colors.h"
 
-#include "../../debug.h"
+#include "debug.h"
 
 #define ALL_TABLES -1
 

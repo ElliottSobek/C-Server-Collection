@@ -1,7 +1,7 @@
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
-#include "../types/types.h"
+#include "types.h"
 
 typedef struct ll_node_s {
 	String key, value;

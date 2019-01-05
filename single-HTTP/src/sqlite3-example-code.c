@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <sqlite3.h>
 
-#include "../types/types.h"
-#include "../colors/colors.h"
+#include "types.h"
+#include "colors.h"
 
 int callback(void *unused, const int col_num, char **row_value, char **col_name) {
     if (col_num < 1)

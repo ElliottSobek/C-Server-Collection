@@ -1,7 +1,7 @@
 #ifndef S_LINKED_LIST_H
 #define S_LINKED_LIST_H
 
-#include "../types/types.h"
+#include "types.h"
 
 typedef struct s_ll_node_s {
 	String regex, path;

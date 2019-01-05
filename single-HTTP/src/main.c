@@ -16,12 +16,12 @@
 #include <linux/limits.h>
 
 #include "globals.h"
-#include "lib/logging/log.h"
-#include "lib/types/types.h"
-#include "lib/colors/colors.h"
-#include "lib/sqlite3/sqlite3.h"
-#include "lib/hashtable/hashtable.h"
-#include "lib/s_linked_list/s_linked_list.h"
+#include "log.h"
+#include "types.h"
+#include "colors.h"
+#include "sqlite3.h"
+#include "hashtable.h"
+#include "s_linked_list.h"
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"

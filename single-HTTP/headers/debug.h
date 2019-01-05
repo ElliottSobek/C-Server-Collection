@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#include "lib/colors/colors.h"
+#include "colors.h"
 
 #define _DEBUG_INT(x) (printf(CYAN "__Debug__ File: %s, Function: %s, Line: %d; %lli\n" RESET, __FILE__, __func__, __LINE__, (x)))
 #define _DEBUG_CHAR(x) (printf(CYAN "__Debug__ File: %s, Function: %s, Line: %d; %c\n" RESET, __FILE__, __func__, __LINE__, (x)))

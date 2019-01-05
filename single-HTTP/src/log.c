@@ -9,9 +9,9 @@
 #include <sys/types.h>
 #include <linux/limits.h>
 
-#include "../../globals.h"
-#include "../types/types.h"
-#include "../colors/colors.h"
+#include "globals.h"
+#include "types.h"
+#include "colors.h"
 
 #define FTIME_MLEN 25
 #define FF_TIME_PATH_MLEN 19
