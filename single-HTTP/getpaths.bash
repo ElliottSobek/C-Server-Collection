@@ -11,7 +11,7 @@ getPaths() {
 	for arg in "$@"; do
 
 		if [ -d $arg ]; then
-			local dirlist=`find -O3 lib -type f -name "*.c" -printf "%h\n" | uniq`
+			local dirlist=`find -O3 $arg -type f -name "*.c" -printf "%h\n" | uniq`
 
 			for dir in $dirlist; do
 				relative_wds+="$dir "
