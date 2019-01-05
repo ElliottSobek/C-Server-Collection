@@ -39,7 +39,7 @@
 #define DEFAULT_HT_S 10
 #define DEFAULT_PORT "8888"
 #define CONNECTION_TEMPLATE "Connection from %s for file %s"
-#define USAGE_MSG "Usage: %s [-h] [-V] [-v] [-d[table]] [-l <filepath>] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
+#define USAGE_MSG "Usage: %s [-vc] [-h] [-V] [-d[table]] [-l <filepath>] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -161,12 +161,12 @@ static void load_configuration(const String path) { // Done
 		printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
-static void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
+static void compute_flags(const int argc, String *const argv, bool *v_flag, bool *c_flag) { // Done
 	int c;
 	uid_t euid;
 	gid_t egid;
 
-	while ((c = getopt(argc, argv, "d::hl:Vvs:g:u:")) != -1) { // : at the start?
+	while ((c = getopt(argc, argv, "d::hl:Vvcs:g:u:")) != -1) { // : at the start?
 		switch (c) {
 		case 'h':
 			printf(USAGE_MSG
@@ -175,6 +175,7 @@ static void compute_flags(const int argc, String *const argv, bool *v_flag) { //
 				   "-h\tHelp menu\n"
 				   "-V\tVersion\n"
 				   "-v\tVerbose\n"
+				   "-c\tEnable template caching\n"
 				   "-s\tLoad a configuration file\n"
 				   "-u\tSet the effective user id for the process\n"
 				   "-g\tSet the effective group if for the process\n", basename(argv[0]));
@@ -193,6 +194,10 @@ static void compute_flags(const int argc, String *const argv, bool *v_flag) { //
 			exit(EXIT_SUCCESS);
 		case 'v':
 			*v_flag = true;
+
+			break;
+		case 'c':
+			*c_flag = true;
 
 			break;
 		case 's':
@@ -438,7 +443,7 @@ static HashTable parse_post_request(const String msg) {
 			end += 2;
 		else
 			end++;
-		start = end; 
+		start = end;
 	}
 	return data;
 }
@@ -755,8 +760,8 @@ int main(const int argc, String *const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	compute_flags(argc, argv, &_verbose_flag);
-	
+	compute_flags(argc, argv, &_verbose_flag, &_caching_flag);
+
 	if (!is_valid_port()) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
 		exit(EXIT_FAILURE);
