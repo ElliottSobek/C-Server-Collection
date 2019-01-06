@@ -39,7 +39,7 @@
 #define DEFAULT_HT_S 10
 #define DEFAULT_PORT "8888"
 #define CONNECTION_TEMPLATE "Connection from %s for file %s"
-#define USAGE_MSG "Usage: %s [-vc] [-h] [-V] [-d[table]] [-l <filepath>] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
+#define USAGE_MSG "Usage: %s [-vc] [-h] [-V] [-i <database>] [-d[table]] [-l <filepath>] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -166,7 +166,7 @@ static void compute_flags(const int argc, String *const argv, bool *v_flag, bool
 	uid_t euid;
 	gid_t egid;
 
-	while ((c = getopt(argc, argv, "d::hl:Vvcs:g:u:")) != -1) { // : at the start?
+	while ((c = getopt(argc, argv, "d::hl:Vvi:cs:g:u:")) != -1) { // : at the start?
 		switch (c) {
 		case 'h':
 			printf(USAGE_MSG
@@ -175,6 +175,7 @@ static void compute_flags(const int argc, String *const argv, bool *v_flag, bool
 				   "-h\tHelp menu\n"
 				   "-V\tVersion\n"
 				   "-v\tVerbose\n"
+				   "-i\tInitialized the server database\n"
 				   "-c\tEnable template caching\n"
 				   "-s\tLoad a configuration file\n"
 				   "-u\tSet the effective user id for the process\n"
@@ -196,6 +197,29 @@ static void compute_flags(const int argc, String *const argv, bool *v_flag, bool
 			*v_flag = true;
 
 			break;
+		case 'i':
+			if (strncmp(optarg, "sqlite", 6) == 0) {
+				puts("Performing first time server initialization using sqltie3");
+				sqlite_exec(
+			        "CREATE TABLE IF NOT EXISTS TemplateCache ("
+			            "filepath VARCHAR(255),"
+			            "hash CHAR(64)"
+			        ");"
+			    );
+				exit(EXIT_SUCCESS);
+			} else if (strncmp(optarg, "mysql", 5) == 0) {
+				puts("Performing first time server initialization using mysql");
+				// mysql_exec(
+				// 	"CREATE TABLE IF NOT EXISTS TemplateCache ("
+			 //            "filepath VARCHAR(255),"
+			 //            "hash CHAR(64)"
+			 //        ");"
+			 //    );
+				exit(EXIT_SUCCESS);
+			} else {
+				printf(RED "Unknown option param '%s'\n" RESET, optarg);
+				exit(EXIT_FAILURE);
+			}
 		case 'c':
 			*c_flag = true;
 
