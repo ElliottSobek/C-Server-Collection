@@ -39,7 +39,8 @@
 #define DEFAULT_HT_S 10
 #define DEFAULT_PORT "8888"
 #define CONNECTION_TEMPLATE "Connection from %s for file %s"
-#define USAGE_MSG "Usage: %s [-vc] [-h] [-V] [-i <database>] [-d[table]] [-l <filepath>] [-s <configuration file>] [-u <unsigned int>] [-g <unsigned int>]\n"
+#define USAGE_MSG "Usage: %s [-v] [-h] [-V] [-i <database>] [-d[table]] [-l <filepath>] [-s <configuration file>] " \
+				  "[-u <unsigned int>] [-g <unsigned int>] [-c <unsigned int>]\n"
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -76,6 +77,7 @@
 S_Ll _paths;
 char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT;
+int _cache_timeout = -1;
 
 bool _sigint_flag = true;
 
@@ -161,12 +163,12 @@ static void load_configuration(const String path) { // Done
 		printf(YELLOW "Configuration File Descriptor Error: %s\n" RESET, strerror(errno));
 }
 
-static void compute_flags(const int argc, String *const argv, bool *v_flag, bool *c_flag) { // Done
+static void compute_flags(const int argc, String *const argv, bool *v_flag) { // Done
 	int c;
 	uid_t euid;
 	gid_t egid;
 
-	while ((c = getopt(argc, argv, "d::hl:Vvi:cs:g:u:")) != -1) { // : at the start?
+	while ((c = getopt(argc, argv, "d::hl:Vvi:c:s:g:u:")) != -1) { // : at the start?
 		switch (c) {
 		case 'h':
 			printf(USAGE_MSG
@@ -202,8 +204,9 @@ static void compute_flags(const int argc, String *const argv, bool *v_flag, bool
 				puts("Performing first time server initialization using sqltie3");
 				sqlite_exec(
 			        "CREATE TABLE IF NOT EXISTS TemplateCache ("
-			            "filepath VARCHAR(255),"
-			            "hash CHAR(64)"
+			        	"id INT PRIMARY KEY AUTO_INCREMENT NOT NULL"
+			            "filepath VARCHAR(255) NOT NULL,"
+			            "hash CHAR(64) NOT NULL"
 			        ");"
 			    );
 				exit(EXIT_SUCCESS);
@@ -211,17 +214,18 @@ static void compute_flags(const int argc, String *const argv, bool *v_flag, bool
 				puts("Performing first time server initialization using mysql");
 				// mysql_exec(
 				// 	"CREATE TABLE IF NOT EXISTS TemplateCache ("
-			 //            "filepath VARCHAR(255),"
-			 //            "hash CHAR(64)"
-			 //        ");"
-			 //    );
+				//		   "id INT PRIMARY KEY AUTO_INCREMENT NOT NULL"
+			    //         "filepath VARCHAR(255) NOT NULL,"
+			    //         "hash CHAR(64) NOT NULL"
+			    //     ");"
+			    // );
 				exit(EXIT_SUCCESS);
 			} else {
 				printf(RED "Unknown option param '%s'\n" RESET, optarg);
 				exit(EXIT_FAILURE);
 			}
 		case 'c':
-			*c_flag = true;
+			_cache_timeout = strtol(optarg, NULL, BASE_TEN);
 
 			break;
 		case 's':
@@ -784,7 +788,7 @@ int main(const int argc, String *const argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	compute_flags(argc, argv, &_verbose_flag, &_caching_flag);
+	compute_flags(argc, argv, &_verbose_flag);
 
 	if (!is_valid_port()) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
