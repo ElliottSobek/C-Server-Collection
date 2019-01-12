@@ -120,6 +120,7 @@ int sqlite_exec(const String restrict stmt, ...) {
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        sqlite3_close(db);
         exit(EXIT_FAILURE);
     }
     const Query restrict query = parse_stmt(stmt);
@@ -128,6 +129,7 @@ int sqlite_exec(const String restrict stmt, ...) {
     if (result_code != SQLITE_OK) {
         if (_verbose_flag)
             fprintf(stderr, YELLOW "SQL error: %s\n" RESET, sqlite3_errmsg(db));
+        destroy_query(query);
         sqlite3_finalize(sql_byte_code);
         sqlite3_close(db);
         return -1;
@@ -162,6 +164,9 @@ int sqlite_exec(const String restrict stmt, ...) {
                 stat(string, &file);
                 sqlite3_bind_blob(sql_byte_code, i + 1, string, file.st_size, SQLITE_STATIC);
                 continue;
+            default:
+                puts("Unknown query arg specifier");
+                break;
             }
         }
         va_end(args);
@@ -185,7 +190,7 @@ int sqlite_exec(const String restrict stmt, ...) {
     return 0;
 }
 
-
+// Check file extension?
 void sqlite_load_exec(const String restrict filepath) {
     sqlite3 *db;
     char buf[KBYTE_S], sql_buf[MBYTE_S] = {0};
@@ -203,16 +208,20 @@ void sqlite_load_exec(const String restrict filepath) {
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        fclose(fixture);
+        sqlite3_close(db);
         return;
     }
     result_code = sqlite3_exec(db, sql_buf, NULL, NULL, &err_msg);
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "SQL error: %s\n" RESET, err_msg);
+        fclose(fixture);
         sqlite3_free(err_msg);
         sqlite3_close(db);
         return;
     }
+    fclose(fixture);
     sqlite3_close(db);
 
     return;
@@ -221,22 +230,28 @@ void sqlite_load_exec(const String restrict filepath) {
 void sqlite_dumpdb(void) {
     sqlite3 *d_db, *s_db;
     sqlite3_backup *backup;
-    int result_code = sqlite3_open(_db_path, &s_db);
+    int result_code = sqlite3_open_v2(_db_path, &s_db, SQLITE_OPEN_READWRITE, NULL);
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open source database: %s\n" RESET, sqlite3_errmsg(s_db));
+        sqlite3_close(s_db);
         return;
     }
     result_code = sqlite3_open("database/copy.sqlite3", &d_db);
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open destination database : %s\n" RESET, sqlite3_errmsg(d_db));
+        sqlite3_close(s_db);
+        sqlite3_close(d_db);
         return;
     }
     backup = sqlite3_backup_init(d_db, "main", s_db, "main");
 
     if (!backup) {
         fprintf(stderr, RED "Database Error: Cannot initalize database copy: %s\n" RESET, sqlite3_errmsg(d_db));
+        sqlite3_backup_finish(backup);
+        sqlite3_close(s_db);
+        sqlite3_close(d_db);
         return;
     }
     result_code = sqlite3_backup_step(backup, ALL_TABLES);
@@ -246,10 +261,14 @@ void sqlite_dumpdb(void) {
 
     if (result_code != SQLITE_DONE) {
         fprintf(stderr, RED "Database Error: Cannot copy database: %s\n" RESET, sqlite3_errmsg(s_db));
+        sqlite3_backup_finish(backup);
+        sqlite3_close(s_db);
+        sqlite3_close(d_db);
         return;
     }
     sqlite3_backup_finish(backup);
     sqlite3_close(s_db);
+    sqlite3_close(d_db);
 
     return;
 }
@@ -263,6 +282,7 @@ void sqlite_dumptable(const String restrict table) {
 
     if (result_code != SQLITE_OK) {
         fprintf(stderr, RED "Database Error: Cannot open database: %s\n" RESET, sqlite3_errmsg(db));
+        sqlite3_close(db);
         return;
     }
     snprintf(sql_stmt, KBYTE_S, "SELECT sql, COUNT() FROM sqlite_master WHERE type = 'table' AND name = '%s'", table);
