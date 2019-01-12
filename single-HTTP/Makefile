@@ -14,7 +14,7 @@ SUBDIRS := src
 
 VPATH := $(shell echo `./getpaths.sh $(SUBDIRS)`)
 
-OBJECTS := main.o hashtable.o s_linked_list.o sqlite3.o log.o sha256.o
+OBJECTS := main.o hashtable.o s_linked_list.o sqlite3.o log.o
 
 ifeq ($(MAKECMDGOALS),)
 override CFLAGS += -O0  -g
