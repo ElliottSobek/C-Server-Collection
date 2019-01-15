@@ -4,7 +4,9 @@
 #include "types.h"
 
 typedef struct ll_node_s {
-	String key, value;
+	String key;
+	Generic value;
+	Data_Type dt;
 	struct ll_node_s *next;
 } ll_node_t;
 
@@ -25,9 +27,9 @@ typedef hashtable_t *HashTable;
 
 extern HashTable ht_create(const unsigned int);
 extern void ht_destroy(HashTable);
-extern void ht_insert(HashTable *const, const String, const String);
+extern void ht_insert(HashTable *const, const String, const Generic, const Data_Type);
 extern void ht_remove(const HashTable, const String);
-extern String ht_get_value(HashTable const, const String);
+extern Generic ht_get_value(HashTable const, const String);
 extern void ht_print(HashTable const);
 
 #endif /* End HASHTABLE_H */

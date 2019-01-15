@@ -13,7 +13,7 @@
 #define DEFAULT_SIZE 10
 #define PERCENT_CUTOFF 80
 
-static Ll_Node create_node(const String restrict key, const String restrict value) {
+static Ll_Node create_node(const String restrict key, const Generic restrict value, const Data_Type dt) {
 	const Ll_Node restrict node = (Ll_Node) malloc(sizeof(ll_node_t));
 	if (!node)
 		exit(EXIT_FAILURE);
@@ -26,14 +26,30 @@ static Ll_Node create_node(const String restrict key, const String restrict valu
 
 	strncpy(node->key, key, key_len);
 
-	const size_t value_len = strnlen(value, STR_MAX);
+	switch(dt) {
+	case INTEGER:
+		node->value = (int*) malloc(sizeof(int));
 
-	node->value = (String) calloc((value_len + NT_LEN), sizeof(char));
-	if (!node->value)
-		exit(EXIT_FAILURE);
+		memcpy(node->value, (int*) &value, sizeof(int));
+		node->dt = INTEGER;
 
-	strncpy(node->value, value, value_len);
+		break;
+	case STRING:
+		node->value = (String) calloc(strnlen((String) value, STR_MAX) + NT_LEN, sizeof(char));
 
+		memcpy(node->value, (String) value, strnlen((String) value, STR_MAX));
+		node->dt = STRING;
+
+		break;
+	case HASHTABLE:
+		node->value = (HashTable) value;
+		node->dt = HASHTABLE;
+
+		break;
+	default:
+		puts("Bad/Unknown Type");
+		break;
+	}
 	node->next = NULL;
 
 	return node;
@@ -67,8 +83,8 @@ static Ll_Node s_ll_find(const Ll restrict list, const String restrict key) {
 	return NULL;
 }
 
-static void s_ll_insert(const Ll restrict list, const String restrict key, const String restrict value) {
-	const Ll_Node new_node = create_node(key, value);
+static void s_ll_insert(const Ll restrict list, const String restrict key, const Generic restrict value, const Data_Type dt) {
+	const Ll_Node new_node = create_node(key, value, dt);
 	Ll_Node node = list->root;
 
 	if (!node) {
@@ -119,6 +135,15 @@ static void s_ll_destroy(Ll restrict list) {
 		tmp = root;
 		root = root->next;
 
+		if (tmp->dt == HASHTABLE) {
+			HashTable tmp_ht = (HashTable) tmp->value;
+
+			for (unsigned int bin = 0; bin < tmp_ht->max_size; bin++)
+				s_ll_destroy(tmp_ht->bins[bin]);
+
+			free(tmp_ht->bins);
+			tmp_ht->bins = NULL;
+		}
 		free(tmp->key);
 		tmp->key = NULL;
 
@@ -132,9 +157,28 @@ static void s_ll_destroy(Ll restrict list) {
 	list = NULL;
 }
 
+/*
+Modify to print & format like a dictionary?
+*/
 static void s_ll_print(const Ll restrict list) {
-	for (Ll_Node node = list->root; node; node = node->next)
-		printf("%s:%s\n", node->key, node->value);
+	for (Ll_Node node = list->root; node; node = node->next) {
+		switch (node->dt) {
+		case INTEGER:
+			printf("\"%s\": %d\n", node->key, *(int*) node->value);
+			break;
+		case STRING:
+			printf("\"%s\": \"%s\"\n", node->key, (String) node->value);
+			break;
+		case HASHTABLE:
+			for (unsigned int bin = 0; bin < ((HashTable) node->value)->max_size; bin++)
+				if (((HashTable) node->value)->bins[bin]->root)
+					s_ll_print(((HashTable) node->value)->bins[bin]);
+			break;
+		default:
+			puts("Error printing unknown data type");
+			break;
+		}
+	}
 }
 
 static Ll s_ll_create(void) {
@@ -165,7 +209,7 @@ static void deep_copy(const HashTable restrict new_table, const HashTable restri
 		for (Ll_Node node = ht->bins[i]->root; node; node = node->next) {
 			bin = get_hash(new_table, node->key);
 
-			s_ll_insert(new_table->bins[bin], node->key, node->value);
+			s_ll_insert(new_table->bins[bin], node->key, node->value, node->dt);
 			new_table->cur_size++;
 		}
 	}
@@ -178,7 +222,7 @@ void ht_remove(const HashTable restrict ht, const String restrict key) {
 		ht->cur_size--;
 }
 
-String ht_get_value(const HashTable restrict ht, const String restrict key) {
+Generic ht_get_value(const HashTable restrict ht, const String restrict key) {
 	const unsigned int bin = get_hash(ht, key);
 
 	for (Ll_Node node = ht->bins[bin]->root; node; node = node->next)
@@ -190,7 +234,8 @@ String ht_get_value(const HashTable restrict ht, const String restrict key) {
 
 void ht_print(const HashTable restrict ht) {
 	for (unsigned int bin = 0; bin < ht->max_size; bin++)
-		s_ll_print(ht->bins[bin]);
+		if (ht->bins[bin]->root)
+			s_ll_print(ht->bins[bin]);
 }
 
 void ht_destroy(HashTable restrict ht) {
@@ -225,11 +270,11 @@ HashTable ht_create(const unsigned int max_size) {
 	return ht;
 }
 
-void ht_insert(HashTable *ht_head, const String restrict key, const String restrict value) {
+void ht_insert(HashTable *ht_head, const String restrict key, const Generic restrict value, const Data_Type dt) {
 	const HashTable ht = *ht_head;
 	const unsigned int bin = get_hash(ht, key);
 
-	s_ll_insert(ht->bins[bin], key, value);
+	s_ll_insert(ht->bins[bin], key, value, dt);
 	ht->cur_size++;
 
 	if (ht->cur_size >= ((ht->max_size * PERCENT_CUTOFF) / 100)) {
