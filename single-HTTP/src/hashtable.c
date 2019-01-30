@@ -13,7 +13,7 @@
 #define DEFAULT_SIZE 10
 #define PERCENT_CUTOFF 80
 
-static Ll_Node create_node(const String restrict key, const Generic restrict value, const Data_Type dt) {
+static Ll_Node create_node(const String restrict key, const Generic restrict value, const DataType dt) {
 	const Ll_Node restrict node = (Ll_Node) malloc(sizeof(ll_node_t));
 	if (!node)
 		exit(EXIT_FAILURE);
@@ -31,25 +31,21 @@ static Ll_Node create_node(const String restrict key, const Generic restrict val
 		node->value = (int*) malloc(sizeof(int));
 
 		memcpy(node->value, (int*) &value, sizeof(int));
-		node->dt = INTEGER;
-
 		break;
 	case STRING:
 		node->value = (String) calloc(strnlen((String) value, STR_MAX) + NT_LEN, sizeof(char));
 
 		memcpy(node->value, (String) value, strnlen((String) value, STR_MAX));
-		node->dt = STRING;
-
 		break;
 	case HASHTABLE:
 		node->value = (HashTable) value;
-		node->dt = HASHTABLE;
 
 		break;
 	default:
-		puts("Bad/Unknown Type");
+		puts("Bad/Unknown HashTable Type");
 		break;
 	}
+	node->dt = dt;
 	node->next = NULL;
 
 	return node;
@@ -83,7 +79,7 @@ static Ll_Node s_ll_find(const Ll restrict list, const String restrict key) {
 	return NULL;
 }
 
-static void s_ll_insert(const Ll restrict list, const String restrict key, const Generic restrict value, const Data_Type dt) {
+static void s_ll_insert(const Ll restrict list, const String restrict key, const Generic restrict value, const DataType dt) {
 	const Ll_Node new_node = create_node(key, value, dt);
 	Ll_Node node = list->root;
 
@@ -270,7 +266,7 @@ HashTable ht_create(const unsigned int max_size) {
 	return ht;
 }
 
-void ht_insert(HashTable *ht_head, const String restrict key, const Generic restrict value, const Data_Type dt) {
+void ht_insert(HashTable *ht_head, const String restrict key, const Generic value, const DataType dt) {
 	const HashTable ht = *ht_head;
 	const unsigned int bin = get_hash(ht, key);
 
