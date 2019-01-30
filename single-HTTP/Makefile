@@ -12,9 +12,11 @@ LDLIBS := -lsqlite3
 
 SUBDIRS := src
 
+BUILD := obj
+
 VPATH := $(shell echo `./getpaths.sh $(SUBDIRS)`)
 
-SRC = $(shell echo `find -O3 $(SUBDIRS) -type f -name "*.c" -printf "%f "`)
+SRC := $(shell echo `find -O3 $(SUBDIRS) -type f -name "*.c" -printf "%f "`)
 
 OBJECTS = $(SRC:.c=.o)
 
@@ -33,7 +35,7 @@ endif
 
 .PHONY: debug profile production cross clean
 
-debug: $(OBJECTS)
+debug: $(BUILD)/%.o
 	$(CC) $(CFLAGS) $^ $(LDLIBS) -o single-HTTP-debug
 
 profile: $(OBJECTS)
@@ -45,7 +47,8 @@ production: $(OBJECTS)
 cross: $(OBJECTS)
 	$(CC) $(CFLAGS) $^ $(LDLIBS) -o single-HTTP-cross
 
-$(OBJECTS):
+$(OBJECTS): $(SRC)
+	$(CC) $(CFLAGS) -c $< -o $(BUILD)/$@
 
 clean:
-	$(RM) *.o
+	$(RM) $(BUILD)/*.o
