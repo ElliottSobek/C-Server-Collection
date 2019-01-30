@@ -13,107 +13,14 @@
 #include "globals.h"
 #include "types.h"
 #include "colors.h"
-
-#include "debug.h"
+#include "s_linked_list.h"
+#include "sqlite3_lib.h"
+#include "resultset.h"
+#include "query.h"
 
 #define ALL_TABLES -1
 
-typedef struct query_s {
-    String stmt, specifiers;
-    bool is_parameterized;
-    size_t specifiers_len;
-} quert_t;
-
-typedef quert_t *Query;
-
-static Query parse_stmt(const String restrict stmt) {
-    const size_t prepare_stmt_len = strnlen(stmt, KBYTE_S * 2);
-    char prepare_stmt[(KBYTE_S * 2) + NT_LEN], result[(KBYTE_S * 2) + NT_LEN] = "", specifiers[63 + NT_LEN] = "";
-
-    strncpy(prepare_stmt, stmt, prepare_stmt_len);
-
-    for (unsigned int i = 0, j = 0, k = 0; i < prepare_stmt_len; i++, j++) {
-        if (prepare_stmt[i] == '%') {
-            result[j] = '?';
-            specifiers[k] = prepare_stmt[i + 1];
-            i++;
-            k++;
-        } else
-            result[j] = prepare_stmt[i];
-    }
-
-    Query query = (Query) malloc(sizeof(quert_t));
-
-    if (!query)
-        exit(EXIT_FAILURE);
-
-    // const size_t result_len = strnlen(result, KBYTE_S * 2);
-
-    query->stmt = (String) calloc(2048, sizeof(char));
-
-    if (!query->stmt)
-        exit(EXIT_FAILURE);
-    strncpy(query->stmt, result, KBYTE_S * 2);
-    // (KBYTE_S * 2) + NT_LEN
-    query->specifiers = (String) calloc(64, sizeof(char));
-
-    if (!query->specifiers)
-        exit(EXIT_FAILURE);
-
-    if (specifiers[0] != '\0') {
-        query->is_parameterized = true;
-        query->specifiers_len = strnlen(specifiers, 63);
-        strncpy(query->specifiers, specifiers, 63);
-        return query;
-    }
-    query->is_parameterized = false;
-    query->specifiers_len = 0;
-
-    return query;
-}
-
-static void destroy_query(Query query) {
-    free(query->stmt);
-    query->stmt = NULL;
-
-    free(query->specifiers);
-    query->specifiers = NULL;
-
-    free(query);
-    query = NULL;
-    return;
-}
-
-static void print_headers(const int rows, sqlite3_stmt *sql_byte_code) {
-    sqlite3_step(sql_byte_code);
-    printf("| %s |", sqlite3_column_name(sql_byte_code, 0));
-
-    for (int i = 1; i < rows; i++)
-        printf(" %s |", sqlite3_column_name(sql_byte_code, i));
-    printf("\n");
-}
-
-static void print_rows(const int rows, sqlite3_stmt *sql_byte_code) {
-    int result;
-    const char *row_value;
-
-    do {
-        row_value = (char*) sqlite3_column_text(sql_byte_code, 0);
-
-        printf("| %s |", row_value ? row_value: "NULL");
-
-        for (int i = 1; i < rows; i++) {
-            row_value = (char*) sqlite3_column_text(sql_byte_code, i);
-
-            printf(" %s |", row_value ? row_value: "NULL");
-        }
-        printf("\n");
-        result = sqlite3_step(sql_byte_code);
-
-    } while(result == SQLITE_ROW);
-}
-
-int sqlite_exec(const String restrict stmt, ...) {
+ResultSet sqlite_exec(const String restrict stmt, ...) {
     sqlite3 *db;
     sqlite3_stmt *sql_byte_code;
     int result_code = sqlite3_open(_db_path, &db);
@@ -132,7 +39,7 @@ int sqlite_exec(const String restrict stmt, ...) {
         destroy_query(query);
         sqlite3_finalize(sql_byte_code);
         sqlite3_close(db);
-        return -1;
+        return NULL;
     }
 
     if (query->is_parameterized) {
@@ -171,23 +78,26 @@ int sqlite_exec(const String restrict stmt, ...) {
         }
         va_end(args);
     }
+    ResultSet rs;
 
     if (strncasecmp("SELECT", query->stmt, 6) == 0) {
         const int rows = sqlite3_column_count(sql_byte_code);
 
-        print_headers(rows, sql_byte_code);
-        print_rows(rows, sql_byte_code);
+        rs = parse_query_result(rows, sql_byte_code);
     } else {
         sqlite3_step(sql_byte_code);
+        const int affected = sqlite3_changes(db);
+        String a[] = {"Rows_Affected"};
+        rs = create_rs(1, a, NULL, affected);
 
         if (_verbose_flag)
-            printf("Rows affected: %d\n", sqlite3_changes(db));
+            printf("Rows affected: %d\n", affected);
     }
     destroy_query(query);
     sqlite3_finalize(sql_byte_code);
     sqlite3_close(db);
 
-    return 0;
+    return rs;
 }
 
 // Check file extension?
