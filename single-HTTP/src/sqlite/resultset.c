@@ -69,15 +69,19 @@ ResultSet parse_query_result(const int rows, sqlite3_stmt *sql_byte_code) {
     String row_data[rows + NT_LEN], row_datum;
     S_Ll result_rows = s_ll_create();
 
+    if (!result_rows) {
+        fprintf(stderr, "Memory Error: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+
     while (sqlite3_step(sql_byte_code) == SQLITE_ROW) {
         for (int i = 0; i < rows; i++) {
             row_data[i] = "";
             row_datum = (String) sqlite3_column_text(sql_byte_code, i);
-            // row_data[i] = sqlite3_column_text(sql_byte_code, i);
             row_data[i] = row_datum ? row_datum: "NULL";
             printf("This is row_data[i]: %s\n", row_data[i]);
         }
-        row_data[rows + NT_LEN] = 0;
+        row_data[rows + NT_LEN] = NULL;
         s_ll_insert(result_rows, (Generic) row_data, STRING_ARRAY);
         result_amount++;
     }
