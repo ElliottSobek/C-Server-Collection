@@ -5,6 +5,6 @@ typedef char *String;
 typedef unsigned char Byte;
 typedef void *Generic;
 
-typedef enum {INTEGER, STRING, HASHTABLE} Data_Type;
+typedef enum {INTEGER, STRING, STRING_ARRAY, HASHTABLE} DataType;
 
 #endif /* End TYPES_H */
