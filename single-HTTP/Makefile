@@ -21,7 +21,7 @@ SUBDIRS := src
 
 BUILD := obj
 
-VPATH := $(shell echo `./getpaths.sh $(SUBDIRS)`)
+VPATH := $(shell echo `./getpaths.sh c $(SUBDIRS)`)
 
 SRC := $(shell echo `find -O3 $(SUBDIRS) -type f -name "*.c" -printf "%f "`)
 
