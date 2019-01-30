@@ -33,22 +33,28 @@ CC = clang
 CFLAGS = -Wall -Wextra -pedantic -Wno-unused-parameter -Werror -std=c99 -O0 -g -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE
 endif
 
+.SUFFIXES:
+.SUFFIXES: .c .o .h
+
 .PHONY: debug profile production cross clean
 
-debug: $(BUILD)/%.o
-	$(CC) $(CFLAGS) $^ $(LDLIBS) -o single-HTTP-debug
+debug: $(OBJECTS)
+	mv *.o $(BUILD)
+	$(CC) $(CFLAGS) $(addprefix $(BUILD)/,$^) $(LDLIBS) -o single-HTTP-debug
 
 profile: $(OBJECTS)
-	$(CC) $(CFLAGS) $^ $(LDLIBS) -o single-HTTP-profile
+	$(CC) $(CFLAGS) $(addprefix $(BUILD)/,$^) $(LDLIBS) -o single-HTTP-profile
 
 production: $(OBJECTS)
-	$(CC) $(CFLAGS) $^ $(LDLIBS) -o single-HTTP
+	$(CC) $(CFLAGS) $(addprefix $(BUILD)/,$^) $(LDLIBS) -o single-HTTP
 
 cross: $(OBJECTS)
-	$(CC) $(CFLAGS) $^ $(LDLIBS) -o single-HTTP-cross
+	$(CC) $(CFLAGS) $(addprefix $(BUILD)/,$^) $(LDLIBS) -o single-HTTP-cross
 
-$(OBJECTS): $(SRC)
-	$(CC) $(CFLAGS) -c $< -o $(BUILD)/$@
+# $(OBJECTS): $(SRC)
+# 	$(CC) $(CFLAGS) -c $< -o $(BUILD)/$@
+
+$(OBJECTS):
 
 clean:
 	$(RM) $(BUILD)/*.o
