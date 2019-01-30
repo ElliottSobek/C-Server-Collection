@@ -39,22 +39,18 @@ endif
 .PHONY: debug profile production cross clean
 
 debug: $(OBJECTS)
-	mv *.o $(BUILD)
-	$(CC) $(CFLAGS) $(addprefix $(BUILD)/,$^) $(LDLIBS) -o single-HTTP-debug
+	$(CC) $(CFLAGS) $? $(LDLIBS) -o single-HTTP-debug
 
 profile: $(OBJECTS)
-	$(CC) $(CFLAGS) $(addprefix $(BUILD)/,$^) $(LDLIBS) -o single-HTTP-profile
+	$(CC) $(CFLAGS) $? $(LDLIBS) -o single-HTTP-profile
 
 production: $(OBJECTS)
-	$(CC) $(CFLAGS) $(addprefix $(BUILD)/,$^) $(LDLIBS) -o single-HTTP
+	$(CC) $(CFLAGS) $? $(LDLIBS) -o single-HTTP
 
 cross: $(OBJECTS)
-	$(CC) $(CFLAGS) $(addprefix $(BUILD)/,$^) $(LDLIBS) -o single-HTTP-cross
-
-# $(OBJECTS): $(SRC)
-# 	$(CC) $(CFLAGS) -c $< -o $(BUILD)/$@
+	$(CC) $(CFLAGS) $? $(LDLIBS) -o single-HTTP-cross
 
 $(OBJECTS):
 
 clean:
-	$(RM) $(BUILD)/*.o
+	$(RM) *.o
