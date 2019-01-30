@@ -87,7 +87,7 @@ ResultSet sqlite_exec(const String restrict stmt, ...) {
     } else {
         sqlite3_step(sql_byte_code);
         const int affected = sqlite3_changes(db);
-        String a[] = {"Rows_Affected"};
+        String a[] = {"Rows_Affected", NULL};
         rs = create_rs(1, a, NULL, affected);
 
         if (_verbose_flag)
