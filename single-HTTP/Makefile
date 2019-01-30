@@ -1,12 +1,19 @@
+.POSIX:
+
+.SUFFIXES:
+.SUFFIXES: .c .h .o
+
+.PHONY: debug profile production cross clean
+
 SHELL := /bin/bash
 
 CC := gcc
 
-CFLAGS = -Wall -Wextra -pedantic -Wno-unused-parameter \
+INCLUDES := -iquote headers
+
+CFLAGS := -Wall -Wextra -pedantic -Wno-unused-parameter \
 		 -Wno-unused-but-set-parameter -std=c99 \
 		 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE $(INCLUDES)
-
-INCLUDES := -iquote headers
 
 LDLIBS := -lsqlite3
 
@@ -32,11 +39,6 @@ else ifeq ($(MAKECMDGOALS),cross)
 CC = clang
 CFLAGS = -Wall -Wextra -pedantic -Wno-unused-parameter -Werror -std=c99 -O0 -g -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE
 endif
-
-.SUFFIXES:
-.SUFFIXES: .c .o .h
-
-.PHONY: debug profile production cross clean
 
 debug: $(OBJECTS)
 	$(CC) $(CFLAGS) $? $(LDLIBS) -o single-HTTP-debug
