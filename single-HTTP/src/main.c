@@ -19,9 +19,8 @@
 #include "log.h"
 #include "types.h"
 #include "colors.h"
-#include "sqlite3.h"
+#include "sqlite3_lib.h"
 #include "hashtable.h"
-#include "s_linked_list.h"
 
 #define OK "HTTP/1.0 200 OK\n\n"
 #define CREATED "HTTP/1.0 201 CREATED\n\n"
@@ -34,13 +33,15 @@
 
 #define DEFAULT_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/"
 #define DEFAULT_LOG_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/logs/"
-#define DEFAULT_DB_ROOT "/home/elliott/Github/C-Server-Collection/single-HTTP/database/db.sqlite3"
+#define DEFAULT_DB_ROOT "database/db.sqlite3"
 
 #define DEFAULT_HT_S 10
 #define DEFAULT_PORT "8888"
 #define CONNECTION_TEMPLATE "Connection from %s for file %s"
 #define USAGE_MSG "Usage: %s [-v] [-h] [-V] [-i <database>] [-d[table]] [-l <filepath>] [-s <configuration file>] " \
 				  "[-u <unsigned int>] [-g <unsigned int>] [-c <unsigned int>]\n"
+
+#define FIRST_ELEM 0
 
 #define BACKLOG 1
 #define STR_MAX 2048
@@ -74,12 +75,12 @@
 #define BASE_TEN 10
 #define BASE_SIXTEEN 16
 
-S_Ll _paths;
-char _port[PORT_LEN] = DEFAULT_PORT,
+static HashTable _paths;
+static char _port[PORT_LEN] = DEFAULT_PORT,
 	 _doc_root[PATH_MAX] = DEFAULT_ROOT;
-int _cache_timeout = -1;
+static int _cache_timeout = -1;
 
-bool _sigint_flag = true;
+static bool _sigint_flag = true;
 
 static bool is_valid_port(void) { // Done
 	const int port_num = strtol(_port, NULL, BASE_TEN);
@@ -93,7 +94,7 @@ static bool is_valid_request(String *const reqline) { // Done
 	};
 
 	for (int i = 0; i < HTTP_REQ_AMT; i++) // Double check
-		if (strncmp(reqline[0], http_methods[i], strnlen(http_methods[i], STR_MAX)) == 0)
+		if (strncmp(reqline[FIRST_ELEM], http_methods[i], strnlen(http_methods[i], STR_MAX)) == 0)
 			return true;
 
 	const String restrict http_ver[HTTP_VER_AMT] = {"HTTP/1.0", "HTTP/1.1", "HTTP/2.0"};
@@ -145,18 +146,26 @@ static void load_configuration(const String path) { // Done
 		HashTable hashtable = ht_create(DEFAULT_HT_S);
 
 		while (fgets(buffer, KBYTE_S, conf_f)) {
-			if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\t')
+			if (buffer[FIRST_ELEM] == '#' || buffer[FIRST_ELEM] == '\n' || buffer[FIRST_ELEM] == '\t')
 				continue;
 			line = clean_config_line(buffer);
 			defn = strtok(line, "=");
 			value = strtok(NULL, "=");
 
-			ht_insert(&hashtable, defn, value);
+			ht_insert(&hashtable, defn, (Generic) value, STRING);
 		}
-		strncpy(_port, ht_get_value(hashtable, "port"), PORT_LEN);
-		strncpy(_doc_root, ht_get_value(hashtable, "document_root"), PATH_MAX);
-		strncpy(_log_root, ht_get_value(hashtable, "log_root"), PATH_MAX);
-		strncpy(_db_path, ht_get_value(hashtable, "database_path"), PATH_MAX);
+		strncpy(_port, (String) ht_get_value(hashtable, "port"), PORT_LEN);
+		strncpy(_doc_root, (String) ht_get_value(hashtable, "document_root"), PATH_MAX);
+		strncpy(_log_root, (String) ht_get_value(hashtable, "log_root"), PATH_MAX);
+		strncpy(_db_path, (String) ht_get_value(hashtable, "database_path"), PATH_MAX);
+
+		HashTable aa = ht_create(DEFAULT_HT_S);
+		ht_insert(&aa, "hash", (Generic) "8pfiojsdfjiojqpcjqjej38", STRING);
+		ht_insert(&aa, "expiry", (Generic) 1234567890, INTEGER);
+
+		ht_insert(&hashtable, "TIME", (Generic) 47, INTEGER);
+		ht_insert(&hashtable, "HASHTABLE", (Generic) aa, HASHTABLE);
+		ht_print(hashtable);
 		ht_destroy(hashtable);
 	}
 	if ((fclose(conf_f) != 0) && (_verbose_flag))
@@ -181,7 +190,7 @@ static void compute_flags(const int argc, String *const argv, bool *v_flag) { //
 				   "-c\tEnable template caching\n"
 				   "-s\tLoad a configuration file\n"
 				   "-u\tSet the effective user id for the process\n"
-				   "-g\tSet the effective group if for the process\n", basename(argv[0]));
+				   "-g\tSet the effective group if for the process\n", basename(argv[FIRST_ELEM]));
 			exit(EXIT_SUCCESS);
 		case 'd':
 			if (optarg)
@@ -202,13 +211,74 @@ static void compute_flags(const int argc, String *const argv, bool *v_flag) { //
 		case 'i':
 			if (strncmp(optarg, "sqlite", 6) == 0) {
 				puts("Performing first time server initialization using sqltie3");
+			 	sqlite_exec(
+					"CREATE TABLE IF NOT EXISTS TemplateCache ("
+						"id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
+						"tablename VARCHAR(255) NOT NULL,"
+						"dirty_bit TINYINT(1) NOT NULL"
+					");"
+				);
 				sqlite_exec(
-			        "CREATE TABLE IF NOT EXISTS TemplateCache ("
-			        	"id INT PRIMARY KEY AUTO_INCREMENT NOT NULL"
-			            "filepath VARCHAR(255) NOT NULL,"
-			            "hash CHAR(64) NOT NULL"
-			        ");"
-			    );
+					"CREATE TABLE IF NOT EXISTS Testing ("
+						"id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
+						"name VARCHAR(100) NOT NULL,"
+						"code INTEGER NOT NULL,"
+						"markup DECIMAL(5,2) NOT NULL,"
+						"is_kilogram INTEGER NOT NULL,"
+						"desc TEXT"
+					");"
+					);
+				// sqlite_exec(
+			 //        "CREATE TRIGGER SetCacheDirtyBit AFTER INSERT ON 'TableName' FOR EACH ROW "
+			 //        "BEGIN"
+			 //        	"DECLARE record_exists Boolean"
+			 //        	"SELECT 1"
+			 //        	"INTO @record_exists"
+			 //        	"FROM TemplateCache as tc"
+			 //        	"WHERE tc.tablename = 'TableName'"
+			 //        	"IF @record_exists = 1"
+			 //        	"THEN"
+			 //        		"UPDATE TemplateCache"
+			 //        		"SET dirty_bit = 1"
+			 //        		"WHERE TemplateCache.tablename = 'TableName'"
+			 //        	"END IF;"
+			 //        "END;"
+			 //    );
+			 //    sqlite_exec(
+			 //        "CREATE TRIGGER SetCacheDirtyBit AFTER UPDATE ON 'TableName' FOR EACH ROW "
+			 //        "BEGIN"
+			 //        	"DECLARE record_exists Boolean"
+			 //        	"SELECT 1"
+			 //        	"INTO @record_exists"
+			 //        	"FROM TemplateCache as tc"
+			 //        	"WHERE tc.tablename = 'TableName'"
+			 //        	"IF @record_exists = 1"
+			 //        	"THEN"
+			 //        		"UPDATE TemplateCache"
+			 //        		"SET dirty_bit = 1"
+			 //        		"WHERE TemplateCache.tablename = 'TableName'"
+			 //        	"END IF;"
+			 //        "END;"
+			 //    );
+			 //    sqlite_exec(
+			 //        "CREATE TRIGGER SetCacheDirtyBit AFTER DELETE ON 'TableName' FOR EACH ROW "
+			 //        "BEGIN"
+			 //        	"DECLARE record_exists Boolean"
+			 //        	"SELECT 1"
+			 //        	"INTO @record_exists"
+			 //        	"FROM TemplateCache as tc"
+			 //        	"WHERE tc.tablename = 'TableName'"
+			 //        	"IF @record_exists = 1"
+			 //        	"THEN"
+			 //        		"UPDATE TemplateCache"
+			 //        		"SET dirty_bit = 1"
+			 //        		"WHERE TemplateCache.tablename = 'TableName'"
+			 //        	"END IF;"
+			 //        "END;"
+			 //    );
+			    /*
+			     For each table in the database, create the records for the caching tables
+			    */
 				exit(EXIT_SUCCESS);
 			} else if (strncmp(optarg, "mysql", 5) == 0) {
 				puts("Performing first time server initialization using mysql");
@@ -270,6 +340,23 @@ static void process_php(const int client_fd, const String file_path) { // Done
 }
 
 static void send_file(const int client_fd, const String path) { // Done
+	/*
+	obj timed_cached_templates = ht_create(DEFAULT_HT_S);
+	ht = {
+		"/path/to/file": {
+			"rendered_string": "",
+			"expiry_time": 1234567890
+		}
+	}
+
+	obj absolute_cached_templates = ht_create(DEFAULT_HT_S);
+	ht = {"/path/to/file": "rendered_string"}
+	*/
+	// static HashTable timed_cached_templates = ht_create(DEFAULT_HT_S);
+
+	// if _cache_timeout {
+	// 	ht_insert(&cached_templates, path, (Generic) 'RenderedTemplate', STRING);
+	// }
 	const int fd = open(path, O_RDONLY);
 
 	if (fd == -1) {
@@ -350,7 +437,7 @@ static char decode_http_post(HashTable *ht, String data) {
 				continue;
 			}
 		}
-		ht_insert(ht, key, value);
+		ht_insert(ht, key, (Generic) value, STRING);
 		key_pair = strtok_r(NULL, "&", &key_pair_buffer);
 	}
 	return '\0';
@@ -397,7 +484,7 @@ static char decode_json_post(HashTable *ht, String data) {
 			cpy_idx++;
 		}
 		traveler++;
-		ht_insert(ht, key, value);
+		ht_insert(ht, key, (Generic) value, STRING);
 	}
 	return '\0';
 }
@@ -436,7 +523,7 @@ static HashTable parse_post_request(const String msg) {
 			}
 			buffer[line_len] = '\0'; // Data line end
 
-			String content_type = ht_get_value(data, "Content-Type");
+			String content_type = (String) ht_get_value(data, "Content-Type");
 
 			if (!content_type) {
 				if (_verbose_flag)
@@ -465,7 +552,7 @@ static HashTable parse_post_request(const String msg) {
 
 			while (*value == ' ')
 				value++;
-			ht_insert(&data, key, value);
+			ht_insert(&data, key, (Generic) value, STRING);
 		}
 		if (*end == '\r')
 			end += 2;
@@ -545,9 +632,9 @@ static void respond(const int client_fd, String *const reqlines, const String pa
 		return;
 	}
 
-	if (strncmp("GET", reqlines[0], GET_METHOD_LEN) == 0)
+	if (strncmp("GET", reqlines[FIRST_ELEM], GET_METHOD_LEN) == 0)
 		serve_get_request(client_fd, reqlines, path);
-	else if (strncmp("POST", reqlines[0], POST_METHOD_LEN) == 0)
+	else if (strncmp("POST", reqlines[FIRST_ELEM], POST_METHOD_LEN) == 0)
 		process_post_request(client_fd, reqlines, path);
 	else {
 		if (_verbose_flag)
@@ -574,7 +661,6 @@ static String *get_req_lines(String msg) { // Done
 			exit(EXIT_FAILURE);
 		}
 	}
-
 	String tok = strtok(msg, " \t\n");
 
 	if (!tok)
@@ -617,12 +703,12 @@ static void free_req_lines(String *reqline) { // Done
 }
 
 static void init_url_paths(void) {
-	s_ll_insert(_paths, "/", "static/html/index.html");
-	s_ll_insert(_paths, "/index", "static/html/index.html");
-	s_ll_insert(_paths, "/home", "static/html/index.html");
-	s_ll_insert(_paths, "/login", "views/login.php");
-	s_ll_insert(_paths, "/contact", "static/html/contact.html");
-	s_ll_insert(_paths, "/forbidden", "static/html/forbidden.html");
+	ht_insert(&_paths, "/", "static/html/index.html", STRING);
+	ht_insert(&_paths, "/index", "static/html/index.html", STRING);
+	ht_insert(&_paths, "/home", "static/html/index.html", STRING);
+	ht_insert(&_paths, "/login", "views/login.php", STRING);
+	ht_insert(&_paths, "/contact", "static/html/contact.html", STRING);
+	ht_insert(&_paths, "/forbidden", "static/html/forbidden.html", STRING);
 }
 
 static void init_addrinfo(struct addrinfo *const addressinfo) { // Done
@@ -741,7 +827,7 @@ static void process_request(const int fd, String msg, const String ipv6_address)
 		send(fd, BAD_REQUEST, CODE_400_LEN, 0);
 		send_file(fd, "partials/code-responses/400.html");
 	} else {
-		S_Ll_Node data;
+		String data;
 		const String restrict extension = strrchr(reqlines[1], '.');
 
 		if (extension) {
@@ -758,8 +844,8 @@ static void process_request(const int fd, String msg, const String ipv6_address)
 			else if (is_audio(extension))
 				strncat(_doc_root, "static/audio/", PATH_MAX);
 			strncat(_doc_root, reqlines[1], PATH_MAX);
-		} else if ((data = s_ll_find(_paths, reqlines[1])))
-			strncat(_doc_root, data->path, PATH_MAX);
+		} else if ((data = (String) ht_get_value(_paths, reqlines[1])))
+			strncat(_doc_root, data, PATH_MAX);
 		snprintf(con_msg, CONNECTION_TEMPLATE_LEN + PATH_MAX, CONNECTION_TEMPLATE, ipv6_address, reqlines[1]);
 
 		if (_verbose_flag)
@@ -778,17 +864,28 @@ int main(const int argc, String *const argv) {
 	socklen_t sin_size = sizeof(client_addr); // Does this change with every connection?
 	const mode_t mode_d = 0770;
 
-	_paths = s_ll_create();
-	strncpy(_log_root, DEFAULT_LOG_ROOT, PATH_MAX);
-	strncpy(_db_path, DEFAULT_DB_ROOT, PATH_MAX);
-
-	init_signals();
 	if (argc > MAX_ARGS) {
-		printf(USAGE_MSG, basename(argv[0]));
+		printf(USAGE_MSG, basename(argv[FIRST_ELEM]));
 		exit(EXIT_FAILURE);
 	}
 
+	init_signals();
+
+	strncpy(_log_root, DEFAULT_LOG_ROOT, PATH_MAX);
+	strncpy(_db_path, DEFAULT_DB_ROOT, PATH_MAX);
+
 	compute_flags(argc, argv, &_verbose_flag);
+
+	ResultSet a;
+
+	// a = sqlite_exec("INSERT INTO Testing (name,code,markup,is_kilogram,desc) VALUES ('FedEx',2,50.27,1,null);");
+	// sqlite_destroy_rs(a);
+
+	a = sqlite_exec("SELECT * FROM Testing;");
+	sqlite_print_rs(a);
+	sqlite_destroy_rs(a);
+
+	_paths = ht_create(DEFAULT_HT_S);
 
 	if (!is_valid_port()) {
 		fprintf(stderr, RED "Port Error: Invalid port %s\n" RESET, _port);
@@ -862,7 +959,7 @@ int main(const int argc, String *const argv) {
 			server_log(err_msg);
 		}
 	}
-	s_ll_destroy(_paths);
+	ht_destroy(_paths);
 
 	if ((close(masterfd) == -1) && (_verbose_flag))
 		printf(YELLOW "Master File Descriptor Error: %s\n" RESET, strerror(errno));
