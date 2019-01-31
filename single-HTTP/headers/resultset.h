@@ -15,7 +15,7 @@ typedef struct {
 
 typedef resultset_t *ResultSet;
 
-ResultSet create_rs(const int, String*, S_Ll, unsigned long);
+ResultSet create_rs(const int, const String*, const S_Ll, const unsigned long);
 ResultSet parse_query_result(const int, sqlite3_stmt*);
 void sqlite_destroy_rs(ResultSet);
 void sqlite_print_rs(ResultSet);

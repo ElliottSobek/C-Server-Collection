@@ -9,11 +9,11 @@ typedef struct {
     String stmt, specifiers;
     bool is_parameterized;
     size_t specifiers_len;
-} quert_t;
+} query_t;
 
-typedef quert_t *Query;
+typedef query_t *Query;
 
-extern Query parse_stmt(const String);
-extern void destroy_query(Query);
+Query parse_stmt(const String);
+void destroy_query(Query);
 
 #endif /* End QUERY_H */

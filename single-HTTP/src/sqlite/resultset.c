@@ -8,8 +8,8 @@
 
 #define STR_MAX 2048
 
-ResultSet create_rs(const int rows, String *column_names, S_Ll row_data, unsigned long result_amount) {
-    const ResultSet rs = (ResultSet) malloc(sizeof(resultset_t));
+ResultSet create_rs(const int rows, const String *column_names, const S_Ll row_data, const unsigned long result_amount) {
+    ResultSet rs = (ResultSet) malloc(sizeof(resultset_t));
 
     if (!rs)
         return NULL;
@@ -66,7 +66,7 @@ ResultSet parse_query_result(const int rows, sqlite3_stmt *sql_byte_code) {
             row_data[i] = "";
             row_datum = (String) sqlite3_column_text(sql_byte_code, i);
 
-            if (!row_data)
+            if (!row_datum)
                 row_data[i] = "NULL";
             else
                 row_data[i] = row_datum;
