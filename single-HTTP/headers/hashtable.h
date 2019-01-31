@@ -25,11 +25,11 @@ typedef struct {
 
 typedef hashtable_t *HashTable;
 
-extern HashTable ht_create(const unsigned int);
-extern void ht_destroy(HashTable);
-extern void ht_insert(HashTable *const, const String, const Generic, const DataType);
-extern void ht_remove(const HashTable, const String);
-extern Generic ht_get_value(HashTable const, const String);
-extern void ht_print(HashTable const);
+HashTable ht_create(const unsigned int);
+void ht_destroy(HashTable);
+void ht_insert(HashTable *const, const String, const Generic, const DataType);
+void ht_remove(const HashTable, const String);
+Generic ht_get_value(HashTable const, const String);
+void ht_print(HashTable const);
 
 #endif /* End HASHTABLE_H */

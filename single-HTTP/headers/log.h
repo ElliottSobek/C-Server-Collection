@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-extern void server_log(const String restrict);
+void server_log(const String restrict);
 
 #endif /* End LOG_H */
