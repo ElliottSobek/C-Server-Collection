@@ -4,11 +4,11 @@
 #include "types.h"
 #include "resultset.h"
 
-extern ResultSet sqlite_exec(const String restrict, ...);
-extern void sqlite_load_fixture(const String restrict);
-extern void sqlite_dumpdb(void);
-extern void sqlite_dumptable(const String restrict);
-extern void sqlite_load_exec(const String restrict);
-extern String sqlite_get_version(void);
+ResultSet sqlite_exec(const String restrict, ...);
+void sqlite_load_fixture(const String restrict);
+void sqlite_dumpdb(void);
+void sqlite_dumptable(const String restrict);
+void sqlite_load_exec(const String restrict);
+String sqlite_get_version(void);
 
 #endif /* End SQLITE3_LIB_H */
