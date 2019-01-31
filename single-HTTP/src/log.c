@@ -19,14 +19,22 @@
 void server_log(const String restrict msg) {
 	const mode_t mode_d = 0770, mode_f = 0660;
 	const time_t cur_time = time(NULL);
-	String log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char)),
-		f_time = (String) malloc((FTIME_MLEN + NT_LEN) * sizeof(char));
 	char ff_time_path[FF_TIME_PATH_MLEN + NT_LEN];
 	const struct tm *const t_data = localtime(&cur_time);
+	String log_dir = (String) calloc(PATH_MAX + NT_LEN, sizeof(char));
 
-	if (!log_dir || !f_time) {
+	if (!log_dir) {
 		fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
-		exit(EXIT_FAILURE);
+		return;
+	}
+	String f_time = (String) malloc((FTIME_MLEN + NT_LEN) * sizeof(char));
+
+	if (!f_time) {
+		fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
+		free(log_dir);
+		log_dir = NULL;
+
+		return;
 	}
 
 	strftime(f_time, FTIME_MLEN, "%a %b %d %T %Y", t_data);
