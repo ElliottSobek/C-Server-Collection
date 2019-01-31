@@ -9,17 +9,13 @@ SHELL := /bin/bash
 
 CC := gcc
 
-INCLUDES := -iquote headers
-
 CFLAGS := -Wall -Wextra -pedantic -Wno-unused-parameter \
 		 -Wno-unused-but-set-parameter -std=c99 \
-		 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE $(INCLUDES)
+		 -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE -iquote headers
 
 LDLIBS := -lsqlite3
 
 SUBDIRS := src
-
-BUILD := obj
 
 VPATH := $(shell echo `./getpaths.sh c $(SUBDIRS)`)
 
