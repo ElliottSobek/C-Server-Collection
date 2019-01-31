@@ -13,7 +13,6 @@
 #include "globals.h"
 #include "types.h"
 #include "colors.h"
-#include "s_linked_list.h"
 #include "sqlite3_lib.h"
 #include "resultset.h"
 #include "query.h"
@@ -31,6 +30,12 @@ ResultSet sqlite_exec(const String restrict stmt, ...) {
         exit(EXIT_FAILURE);
     }
     const Query restrict query = parse_stmt(stmt);
+
+    if (!query) {
+        fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
+        sqlite3_close(db);
+        exit(EXIT_FAILURE);
+    }
     result_code = sqlite3_prepare_v2(db, query->stmt, KBYTE_S * 2, &sql_byte_code, NULL);
 
     if (result_code != SQLITE_OK) {
@@ -84,13 +89,17 @@ ResultSet sqlite_exec(const String restrict stmt, ...) {
         const int rows = sqlite3_column_count(sql_byte_code);
 
         rs = parse_query_result(rows, sql_byte_code);
+
+        if (!rs)
+            fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
     } else {
         sqlite3_step(sql_byte_code);
         const int affected = sqlite3_changes(db);
-        String a[] = {"Rows_Affected", NULL};
-        rs = create_rs(1, a, NULL, affected);
+        rs = create_rs(1, (String[]) {"Rows_Affected", NULL}, NULL, affected);
 
-        if (_verbose_flag)
+        if (!rs)
+            fprintf(stderr, RED "Memory Error: %s\n" RESET, strerror(errno));
+        else if (_verbose_flag)
             printf("Rows affected: %d\n", affected);
     }
     destroy_query(query);
@@ -100,11 +109,23 @@ ResultSet sqlite_exec(const String restrict stmt, ...) {
     return rs;
 }
 
-// Check file extension?
 void sqlite_load_exec(const String restrict filepath) {
     sqlite3 *db;
     char buf[KBYTE_S], sql_buf[MBYTE_S] = {0};
     String err_msg;
+    const String extension = strrchr(filepath, '.');
+
+    if (!extension) {
+        if (_verbose_flag)
+            puts(RED "File Warning: -l option was not supplied a file" RESET);
+        return;
+    }
+
+    if (strncmp(extension, ".sql", CONF_EXT_LEN) != 0) {
+        if (_verbose_flag)
+            puts(RED "File Warning: -l option takes an sql file as an argument\n" RESET);
+        return;
+    }
     FILE *fixture = fopen(filepath, "r");
 
     if (!fixture) {
