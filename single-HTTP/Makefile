@@ -3,7 +3,7 @@
 .SUFFIXES:
 .SUFFIXES: .c .h .o
 
-.PHONY: clean
+.PHONY: all debug profile cross production clean fullclean
 
 SHELL := /bin/bash
 
@@ -25,6 +25,8 @@ SRC := $(shell echo `find -O3 $(SUBDIRS) -type f -name "*.c" -printf "%f "`)
 
 OBJECTS = $(addprefix $(OBJDIR),$(SRC:.c=.o))
 
+EXECUTABLES := single-HTTP-debug single-HTTP-profile single-HTTP-cross single-HTTP
+
 ifeq ($(MAKECMDGOALS),)
 override CFLAGS += -O0  -g
 else ifeq ($(MAKECMDGOALS),debug)
@@ -37,6 +39,14 @@ else ifeq ($(MAKECMDGOALS),cross)
 CC = clang
 CFLAGS = -Wall -Wextra -pedantic -Wno-unused-parameter -Werror -std=c99 -O0 -g -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE
 endif
+
+debug: single-HTTP-debug
+
+profile: single-HTTP-profile
+
+cross: single-HTTP-cross
+
+production: single-HTTP
 
 single-HTTP-debug: $(OBJECTS)
 	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
@@ -55,3 +65,6 @@ $(OBJDIR)%.o: %.c
 
 clean:
 	$(RM) $(OBJDIR)*.o
+
+fullclean:
+	$(RM) $(OBJDIR)*.o $(EXECUTABLES)
