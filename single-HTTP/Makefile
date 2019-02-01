@@ -3,7 +3,7 @@
 .SUFFIXES:
 .SUFFIXES: .c .h .o
 
-.PHONY: debug profile cross production clean fullclean
+.PHONY: debug profile cross production dist install TAGS test print tar clean clobber
 
 SHELL := /bin/bash
 
@@ -15,17 +15,21 @@ CFLAGS := -Wall -Wextra -pedantic -Wno-unused-parameter \
 
 LDLIBS := -lsqlite3
 
-SUBDIRS := src
+SRCDIRS := src
 
-OBJDIR := obj/
+OBJDIR := obj
 
-VPATH := $(shell echo `./getpaths.sh c $(SUBDIRS)`)
+DEPDIR := headers
 
-SRC := $(shell echo `find -O3 $(SUBDIRS) -type f -name "*.c" -printf "%f "`)
+VPATH := $(shell echo `./getpaths.sh c $(SRCDIRS)`)
 
-OBJECTS = $(addprefix $(OBJDIR),$(SRC:.c=.o))
+SRC := $(shell echo `find -O3 $(SRCDIRS) -type f -name "*.c" -printf "%f "`)
+
+OBJECTS = $(addprefix $(OBJDIR)/,$(SRC:.c=.o))
 
 EXECUTABLES := single-HTTP-debug single-HTTP-profile single-HTTP-cross single-HTTP
+
+TARFILENAME := single-HTTP.tar.bz2
 
 ifeq ($(MAKECMDGOALS),)
 override CFLAGS += -O0  -g
@@ -60,11 +64,29 @@ single-HTTP-cross: $(OBJECTS)
 single-HTTP: $(OBJECTS)
 	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
 
-$(OBJDIR)%.o: %.c
+$(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $? -o $@
 
-clean:
-	$(RM) $(OBJDIR)*.o
+dist:
+	@echo "Not Implemented"
 
-fullclean:
-	$(RM) $(OBJDIR)*.o $(EXECUTABLES)
+install:
+	@echo "Not Implemented"
+
+TAGS:
+	@echo "Not Implemented"
+
+test:
+	@echo "Not Implemented"
+
+print: %.c
+	@echo $?
+
+tar:
+	tar -cj --posix -f $(TARFILENAME) $(SRCDIRS) $(DEPDIR)
+
+clean:
+	$(RM) $(OBJDIR)/*.o
+
+clobber:
+	$(RM) $(OBJDIR)/*.o $(EXECUTABLES) $(TARFILENAME)
