@@ -3,7 +3,7 @@
 .SUFFIXES:
 .SUFFIXES: .c .h .o
 
-.PHONY: debug profile production cross clean
+.PHONY: clean
 
 SHELL := /bin/bash
 
@@ -17,11 +17,13 @@ LDLIBS := -lsqlite3
 
 SUBDIRS := src
 
+OBJDIR := obj/
+
 VPATH := $(shell echo `./getpaths.sh c $(SUBDIRS)`)
 
 SRC := $(shell echo `find -O3 $(SUBDIRS) -type f -name "*.c" -printf "%f "`)
 
-OBJECTS = $(SRC:.c=.o)
+OBJECTS = $(addprefix $(OBJDIR),$(SRC:.c=.o))
 
 ifeq ($(MAKECMDGOALS),)
 override CFLAGS += -O0  -g
@@ -36,19 +38,20 @@ CC = clang
 CFLAGS = -Wall -Wextra -pedantic -Wno-unused-parameter -Werror -std=c99 -O0 -g -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE
 endif
 
-debug: $(OBJECTS)
-	$(CC) $(CFLAGS) $? $(LDLIBS) -o single-HTTP-debug
+single-HTTP-debug: $(OBJECTS)
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
 
-profile: $(OBJECTS)
-	$(CC) $(CFLAGS) $? $(LDLIBS) -o single-HTTP-profile
+single-HTTP-profile: $(OBJECTS)
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
 
-production: $(OBJECTS)
-	$(CC) $(CFLAGS) $? $(LDLIBS) -o single-HTTP
+single-HTTP-cross: $(OBJECTS)
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
 
-cross: $(OBJECTS)
-	$(CC) $(CFLAGS) $? $(LDLIBS) -o single-HTTP-cross
+single-HTTP: $(OBJECTS)
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
 
-$(OBJECTS):
+$(OBJDIR)%.o: %.c
+	$(CC) $(CFLAGS) -c $? -o $@
 
 clean:
-	$(RM) *.o
+	$(RM) $(OBJDIR)*.o
