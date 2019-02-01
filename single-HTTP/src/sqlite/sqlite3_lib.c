@@ -18,6 +18,7 @@
 #include "query.h"
 
 #define ALL_TABLES -1
+#define CONF_EXT_LEN 5
 
 ResultSet sqlite_exec(const String restrict stmt, ...) {
     sqlite3 *db;
