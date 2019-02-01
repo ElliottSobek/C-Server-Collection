@@ -76,7 +76,7 @@ install:
 	@echo "Not Implemented"
 
 TAGS:
-	@echo "Not Implemented"
+	@echo "Action not applicable for project"
 
 test:
 	@echo "Not Implemented"
