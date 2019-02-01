@@ -3,7 +3,7 @@
 .SUFFIXES:
 .SUFFIXES: .c .h .o
 
-.PHONY: debug profile cross production dist install TAGS test print tar clean clobber
+.PHONY: debug profile cross production all install print tar shar dist TAGS test clean mostlyclean clobber
 
 SHELL := /bin/bash
 
@@ -69,16 +69,10 @@ single-HTTP: $(OBJECTS)
 $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $? -o $@
 
-dist:
-	tar -cSj --no-auto-compress --posix --restrict -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
+all:
+	@echo -e "Action not applicable for project.\nRefer to debug, profile, cross, or production targets."
 
 install:
-	@echo "Not Implemented"
-
-TAGS:
-	@echo "Action not applicable for project"
-
-test:
 	@echo "Not Implemented"
 
 print: %.c
@@ -87,8 +81,23 @@ print: %.c
 tar:
 	tar -cSW --posix --restrict -f $(TARFILENAME) $(SRCDIRS) $(DEPDIR)
 
+shar:
+	@echo "Action not applicable for project"
+
+dist:
+	tar -cSj --no-auto-compress --posix --restrict -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
+
+TAGS:
+	@echo "Action not applicable for project"
+
+test:
+	@echo "Not Implemented"
+
 clean:
 	$(RM) $(OBJDIR)/*.o
+
+mostlyclean:
+	@echo "Action not applicable for project"
 
 clobber:
 	$(RM) $(OBJDIR)/*.o $(EXECUTABLES) $(DISTFILENAME) $(TARFILENAME)
