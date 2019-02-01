@@ -29,7 +29,9 @@ OBJECTS = $(addprefix $(OBJDIR)/,$(SRC:.c=.o))
 
 EXECUTABLES := single-HTTP-debug single-HTTP-profile single-HTTP-cross single-HTTP
 
-TARFILENAME := single-HTTP.tar.bz2
+DISTFILENAME := single-HTTP.tar.bz2
+
+TARFILENAME := single-HTTP.tar
 
 ifeq ($(MAKECMDGOALS),)
 override CFLAGS += -O0  -g
@@ -68,7 +70,7 @@ $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $? -o $@
 
 dist:
-	@echo "Not Implemented"
+	tar -cj --posix -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
 
 install:
 	@echo "Not Implemented"
@@ -83,10 +85,10 @@ print: %.c
 	@echo $?
 
 tar:
-	tar -cj --posix -f $(TARFILENAME) $(SRCDIRS) $(DEPDIR)
+	tar -c --posix -f $(TARFILENAME) $(SRCDIRS) $(DEPDIR)
 
 clean:
 	$(RM) $(OBJDIR)/*.o
 
 clobber:
-	$(RM) $(OBJDIR)/*.o $(EXECUTABLES) $(TARFILENAME)
+	$(RM) $(OBJDIR)/*.o $(EXECUTABLES) $(DISTFILENAME) $(TARFILENAME)
