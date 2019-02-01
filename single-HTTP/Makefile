@@ -70,7 +70,7 @@ $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $? -o $@
 
 dist:
-	tar -cSj --no-auto-compress --no-acls --posix --restrict -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
+	tar -cSj --no-auto-compress --posix --restrict -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
 
 install:
 	@echo "Not Implemented"
@@ -85,7 +85,7 @@ print: %.c
 	@echo $?
 
 tar:
-	tar -cSW --no-auto-compress --no-acls --posix --restrict -f $(TARFILENAME) $(SRCDIRS) $(DEPDIR)
+	tar -cSW --posix --restrict -f $(TARFILENAME) $(SRCDIRS) $(DEPDIR)
 
 clean:
 	$(RM) $(OBJDIR)/*.o
