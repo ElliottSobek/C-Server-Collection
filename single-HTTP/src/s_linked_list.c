@@ -6,8 +6,6 @@
 
 #include "s_linked_list.h"
 
-// var == NULL; EQ to: !var
-
 #define NT_LEN 1
 #define STR_MAX 2048
 #define COL_MAX 32
@@ -15,56 +13,52 @@
 static S_Ll_Node create_node(const Generic value, const DataType dt) {
 	S_Ll_Node node = (S_Ll_Node) malloc(sizeof(s_ll_node_t));
 
-	if (!node) {
-		fprintf(stderr, "Memory Error: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-
-	if (!value) {
-		exit(EXIT_FAILURE);
-	}
+	if (!node)
+		return NULL;
 
 	if (dt == STRING_ARRAY) {
-		String *new_value = (String*) value;
+		String *typed_value = (String*) value;
 		unsigned short value_len = 0;
 
-		// for (String *i = (String*) value; *i != 0; i++) {
-		// 	if (COL_MAX < value_len)
-		// 		break;
-		// 	value_len++;
-		// }
-
-		for (unsigned short i = 0; i < COL_MAX; i++) {
-			if (new_value[i] == NULL) {
-				puts("BAD");
+		for (String *i = typed_value; *i; i++) {
+			if (COL_MAX < value_len)
 				break;
-			}
 			value_len++;
 		}
-
-		printf("This is value: %d\n", value_len);
-
-		String *const node_value = (String*) malloc(value_len * sizeof(String));
+		String *node_value = (String*) malloc((value_len + NT_LEN) * sizeof(String));
 
 		if (!node_value) {
-			fprintf(stderr, "Memory Error: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
+			free(node);
+			node = NULL;
+
+			return NULL;
 		}
 
 		for (unsigned int i = 0; i < value_len; i++) {
-			size_t value_elem_len = strnlen(new_value[i], STR_MAX);
+			size_t value_elem_len = strnlen(typed_value[i], STR_MAX);
 			node_value[i] = (String) calloc(value_elem_len + NT_LEN, sizeof(char));
 
 			if (!node_value[i]) {
-				fprintf(stderr, "Memory Error: %s\n", strerror(errno));
-				exit(EXIT_FAILURE);
+				for (unsigned int j = 0; j < i; j++) {
+					free(node_value[j]);
+					node_value[j] = NULL;
+				}
+				free(node_value);
+				node_value = NULL;
+
+				free(node);
+				node = NULL;
+
+				return NULL;
 			}
-			strncpy(node_value[i], new_value[i], value_elem_len + NT_LEN);
+			strncpy(node_value[i], typed_value[i], value_elem_len + NT_LEN);
 		}
+		node_value[value_len + NT_LEN] = NULL;
 		node->value = node_value;
 	} else {
 		free(node);
 		node = NULL;
+
 		return NULL;
 	}
 	node->dt = dt;
@@ -73,77 +67,104 @@ static S_Ll_Node create_node(const Generic value, const DataType dt) {
 	return node;
 }
 
-// static S_Ll_Node find_prev_node(S_Ll_Node const list, const Generic value) {
-// 	const size_t regex_len = strnlen(regex, STR_MAX);
-// 	S_Ll_Node restrict prev = NULL;
-// 	S_Ll_Node cur = list;
+static S_Ll_Node find_prev_node(S_Ll_Node const list, const Generic value, const DataType dt) {
+	S_Ll_Node prev = NULL, cur = list;
 
-// 	while (cur) {
-// 		if (strncmp(regex, cur->regex, regex_len) == 0)
-// 			return prev;
-// 		prev = cur;
-// 		cur = cur->next;
-// 	}
+	while (cur) {
+		if (dt == STRING_ARRAY) {
+			bool match = false;
 
-// 	return NULL;
-// }
+			for (String *i = (String*) cur->value, *j = (String*) value; *i && *j; i++, j++) {
+				if (strncmp(*i, *j, strnlen(*i, STR_MAX)) != 0) {
+					match = false;
 
-// S_Ll_Node s_ll_find(const S_Ll restrict list, const Generic value) {
-// 	const size_t regex_len = strnlen(regex, STR_MAX);
-// 	S_Ll_Node cur = list->root;
+					break;
+				}
+				match = true;
+			}
 
-// 	while (cur) {
-// 		if (strncmp(regex, cur->regex, regex_len) == 0)
-// 			return cur;
-// 		cur = cur->next;
-// 	}
+			if (match)
+				return prev;
+		}
+		prev = cur;
+		cur = cur->next;
+	}
 
-// 	return NULL;
-// }
+	return NULL;
+}
 
-void s_ll_insert(const S_Ll restrict list, const Generic value, const DataType dt) {
+S_Ll_Node s_ll_find(const S_Ll list, const Generic value, const DataType dt) {
+	S_Ll_Node cur = list->root;
+
+	while (cur) {
+		if (dt == STRING_ARRAY) {
+			bool match = false;
+
+			for (String *i = (String*) cur->value, *j = (String*) value; *i && *j; i++, j++) {
+				if (strncmp(*i, *j, strnlen(*i, STR_MAX)) != 0) {
+					match = false;
+
+					break;
+				}
+				match = true;
+			}
+
+			if (match)
+				return cur;
+		}
+		cur = cur->next;
+	}
+
+	return NULL;
+}
+
+int s_ll_insert(const S_Ll list, const Generic value, const DataType dt) {
 	const S_Ll_Node new_node = create_node(value, dt);
+
+	if (!new_node)
+		return -1;
 	S_Ll_Node node = list->root;
 
 	if (!node) {
 		list->root = new_node;
-		return;
+		return 0;
 	}
 
 	while (node->next)
 		node = node->next;
-
 	node->next = new_node;
+
+	return 0;
 }
 
-// int s_ll_remove(const S_Ll restrict list, const Generic value) {
-// 	if (!s_ll_find(list, regex))
-// 		return -1;
+int s_ll_remove(const S_Ll list, const Generic value, const DataType dt) {
+	if (!s_ll_find(list, value, dt))
+		return -1;
 
-// 	const S_Ll_Node root = list->root, prev = find_prev_node(root, regex);
-// 	S_Ll_Node restrict delete_node;
+	const S_Ll_Node root = list->root, prev = find_prev_node(root, value, dt);
+	S_Ll_Node delete_node;
 
-// 	if (!prev) {
-// 		delete_node = root;
-// 		list->root = root->next;
-// 	} else if (!prev->next)
-// 		delete_node = prev;
-// 	else {
-// 		delete_node = prev->next;
-// 		prev->next = delete_node->next;
-// 	}
+	if (!prev) {
+		delete_node = root;
+		list->root = root->next;
+	} else if (!prev->next)
+		delete_node = prev;
+	else {
+		delete_node = prev->next;
+		prev->next = delete_node->next;
+	}
 
-// 	free(delete_node->value);
-// 	delete_node->value = NULL;
+	free(delete_node->value);
+	delete_node->value = NULL;
 
-// 	free(delete_node);
-// 	delete_node = NULL;
+	free(delete_node);
+	delete_node = NULL;
 
-// 	return 0;
-// }
+	return 0;
+}
 
-void s_ll_destroy(S_Ll restrict list) {
-	S_Ll_Node restrict tmp;
+void s_ll_destroy(S_Ll list) {
+	S_Ll_Node tmp;
 	S_Ll_Node root = list->root;
 
 	while (root) {
@@ -151,9 +172,9 @@ void s_ll_destroy(S_Ll restrict list) {
 		root = root->next;
 
 		if (tmp->dt == STRING_ARRAY) {
-			for (unsigned int i = 0; i < (sizeof((String*) tmp->value) / sizeof(String)); i ++) {
-				free(((String*) tmp->value)[i]);
-				((String*) tmp->value)[i] = NULL;
+			for (String *i = (String*) tmp->value; *i; i++) {
+				free(*i);
+				*i = NULL;
 			}
 		}
 		free(tmp->value);
@@ -166,24 +187,37 @@ void s_ll_destroy(S_Ll restrict list) {
 	list = NULL;
 }
 
-void s_ll_print(const S_Ll restrict list) {
+void s_ll_print(const S_Ll list) {
+	bool end = false;
+
 	printf("[");
 
 	for (S_Ll_Node node = list->root; node; node = node->next) {
+		if (!node->next)
+			end = true;
+
 		if (node->dt == STRING_ARRAY) {
-			size_t value_len = (sizeof((String*) node->value) / sizeof(String));
+			String tmp_carray;
 
 			printf("(");
-			for (unsigned int i = 0; i < (value_len - 1); i++)
-				printf("%s, ", ((String*) node->value)[value_len]);
-			printf("%s)", ((String*) node->value)[value_len - 1]);
+			for (String *i = (String*) node->value; *i; i++) {
+				printf("%s, ", *i);
+				tmp_carray = *i;
+			}
+			if (end)
+				printf("%s)", tmp_carray);
+			else
+				printf("%s), ", tmp_carray);
 		}
 	}
 	puts("]");
 }
 
 S_Ll s_ll_create(void) {
-	const S_Ll restrict list = (S_Ll) malloc(sizeof(S_Ll));
+	const S_Ll list = (S_Ll) malloc(sizeof(S_Ll));
+
+	if (!list)
+		return NULL;
 	list->root = NULL;
 
 	return list;
