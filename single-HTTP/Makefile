@@ -3,7 +3,7 @@
 .SUFFIXES:
 .SUFFIXES: .c .h .o
 
-.PHONY: all debug profile cross production clean fullclean
+.PHONY: debug profile cross production clean fullclean
 
 SHELL := /bin/bash
 
