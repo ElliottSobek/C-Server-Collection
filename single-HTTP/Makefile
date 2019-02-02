@@ -82,7 +82,7 @@ tar:
 	tar -cSW --posix --restrict -f $(TARFILENAME) $(SRCDIRS) $(DEPDIR)
 
 shar:
-	@echo "Action not applicable for project"
+	{ find -O3 src/ -type f -name "*.c" & find -O3 headers/ -type f -name "*.h"; } | shar -qV > single-HTTP.shar
 
 dist:
 	tar -cSj --no-auto-compress --posix --restrict -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
