@@ -18,6 +18,8 @@ changedSources() {
 			echo $src_file
 		fi
 	done
+
+	return 0
 }
 
 changedSources "$@"
