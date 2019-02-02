@@ -75,17 +75,17 @@ all:
 install:
 	@echo "Not Implemented"
 
-print: %.c
-	@echo $?
+print:
+	@./changedSources.sh src c obj o
 
 tar:
 	tar -cSW --posix --restrict -f $(TARFILENAME) $(SRCDIRS) $(DEPDIR)
 
 shar:
-	{ find -O3 src/ -type f -name "*.c" & find -O3 headers/ -type f -name "*.h"; } | shar -qV > single-HTTP.shar
+	@{ find -O3 src/ -type f -name "*.c" & find -O3 headers/ -type f -name "*.h"; } | shar -qV > single-HTTP.shar
 
 dist:
-	tar -cSj --no-auto-compress --posix --restrict -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
+	@tar -cSj --no-auto-compress --posix --restrict -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
 
 TAGS:
 	@echo "Action not applicable for project"
