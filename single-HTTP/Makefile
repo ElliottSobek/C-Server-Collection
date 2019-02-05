@@ -73,7 +73,7 @@ all:
 	@echo -e "Action not applicable for project.\nRefer to debug, profile, cross, or production targets."
 
 install:
-	@echo "Not Implemented"
+	@cp single-HTTP /usr/bin/
 
 print:
 	@./changedSources.sh src c obj o
