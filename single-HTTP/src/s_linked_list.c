@@ -34,6 +34,9 @@ static S_Ll_Node create_node(const Generic value, const DataType dt) {
 			return NULL;
 		}
 
+		for (unsigned short i = 0; i < value_len + NT_LEN; i++)
+			node_value[i] = NULL;
+
 		for (unsigned int i = 0; i < value_len; i++) {
 			size_t value_elem_len = strnlen(typed_value[i], STR_MAX);
 			node_value[i] = (String) calloc(value_elem_len + NT_LEN, sizeof(char));
@@ -53,7 +56,6 @@ static S_Ll_Node create_node(const Generic value, const DataType dt) {
 			}
 			strncpy(node_value[i], typed_value[i], value_elem_len + NT_LEN);
 		}
-		node_value[value_len + NT_LEN] = NULL;
 		node->value = node_value;
 	} else {
 		free(node);
