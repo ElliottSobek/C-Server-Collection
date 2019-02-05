@@ -21,7 +21,7 @@ OBJDIR := obj
 
 DEPDIR := headers
 
-VPATH := $(shell echo `./getpaths.sh c $(SRCDIRS)`)
+VPATH := $(shell echo `./getPaths.sh c $(SRCDIRS)`)
 
 SRC := $(shell echo `find -O3 $(SRCDIRS) -type f -name "*.c" -printf "%f "`)
 
