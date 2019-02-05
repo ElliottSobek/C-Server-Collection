@@ -6,11 +6,10 @@ changedSources() {
 		exit 1
 	fi
 	local pathed_src_files=`find -O3 "$1" -type f -name *.$2 -printf "%p\n"`
-	local obj_dir=$3
 
 	for pathed_src_file in $pathed_src_files; do
 		local src_file=`basename $pathed_src_file`
-		local pathed_obj_file=$obj_dir/${src_file%.$2}.$4
+		local pathed_obj_file=$3/${src_file%.$2}.$4
 
 		if [ ! -f $pathed_obj_file ]; then
 			echo $src_file
