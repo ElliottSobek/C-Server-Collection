@@ -23,7 +23,9 @@ ResultSet create_rs(const int rows, const String *column_names, const S_Ll row_d
     }
 
     for (int i = 0; i < rows; i++) {
-        rs->column_names[i] = (String) calloc(strnlen(column_names[i], STR_MAX) + NT_LEN, sizeof(char));
+        String column_name = column_names[i];
+        size_t col_name_len = strnlen(column_name, STR_MAX);
+        rs->column_names[i] = (String) calloc(col_name_len + NT_LEN, sizeof(char));
 
         if (!rs->column_names[i]) {
             free(rs);
@@ -38,6 +40,7 @@ ResultSet create_rs(const int rows, const String *column_names, const S_Ll row_d
             }
             return NULL;
         }
+        strncpy(rs->column_names[i], column_name, col_name_len);
     }
     rs->query_result = row_data;
     rs->column_count = rows;
