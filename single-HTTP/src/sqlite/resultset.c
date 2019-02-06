@@ -63,7 +63,6 @@ ResultSet parse_query_result(const int rows, sqlite3_stmt *sql_byte_code) {
 
     while (sqlite3_step(sql_byte_code) == SQLITE_ROW) {
         for (int i = 0; i < rows; i++) {
-            row_data[i] = "";
             row_datum = (String) sqlite3_column_text(sql_byte_code, i);
 
             if (!row_datum)
@@ -73,8 +72,8 @@ ResultSet parse_query_result(const int rows, sqlite3_stmt *sql_byte_code) {
         }
         row_data[rows + NT_LEN] = NULL;
 
-        s_ll_insert(result_rows, (Generic) row_data, STRING_ARRAY); // Check return value?
-        result_amount++;
+        if (s_ll_insert(result_rows, (Generic) row_data, STRING_ARRAY) == 0)
+            result_amount++;
     }
     return create_rs(rows, column_names, result_rows, result_amount);
 }
