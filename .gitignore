@@ -70,3 +70,6 @@ logs/
 *.avi
 *.flv
 *.wmv
+
+# Tags
+single-HTTP/tags
