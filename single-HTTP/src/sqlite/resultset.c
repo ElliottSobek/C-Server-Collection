@@ -8,6 +8,7 @@
 
 #define STR_MAX 2048
 
+// TODO: Change column_names param type
 ResultSet create_rs(const int rows, const String *column_names, const S_Ll row_data, const unsigned long result_amount) {
     ResultSet rs = (ResultSet) malloc(sizeof(resultset_t));
 
