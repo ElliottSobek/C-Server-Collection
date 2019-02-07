@@ -88,7 +88,7 @@ dist:
 	@tar -cSj --no-auto-compress --posix --restrict -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
 
 TAGS:
-	@echo "Action not applicable for project"
+	@ctags -h ".h" --totals=yes --languages="c" `find -O3 $(SRCDIRS) -type f -name "*.c" -printf "%p "`
 
 test:
 	@echo "Not Implemented"
