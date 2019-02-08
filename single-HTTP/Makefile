@@ -1,9 +1,11 @@
+#!/usr/bin/make
+
 .POSIX:
 
 .SUFFIXES:
 .SUFFIXES: .c .h .o
 
-.PHONY: debug profile cross production all install print tar shar dist TAGS test clean mostlyclean clobber
+.PHONY: all debug profile cross production single-HTTP.info install print tar shar dist TAGS test clean mostlyclean clobber
 
 SHELL := /bin/bash
 
@@ -33,8 +35,10 @@ DISTFILENAME := single-HTTP.tar.bz2
 
 TARFILENAME := single-HTTP.tar
 
+SHARFILENAME := single-HTTP.shar
+
 ifeq ($(MAKECMDGOALS),)
-override CFLAGS += -O0  -g
+override CFLAGS += -O3
 else ifeq ($(MAKECMDGOALS),debug)
 override CFLAGS += -O0  -g
 else ifeq ($(MAKECMDGOALS),profile)
@@ -45,6 +49,8 @@ else ifeq ($(MAKECMDGOALS),cross)
 CC = clang
 CFLAGS = -Wall -Wextra -pedantic -Wno-unused-parameter -Werror -std=c99 -O0 -g -D_POSIX_C_SOURCE=200809L -D_GNU_SOURCE
 endif
+
+all: production single-HTTP.info
 
 debug: single-HTTP-debug
 
@@ -69,11 +75,11 @@ single-HTTP: $(OBJECTS)
 $(OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $? -o $@
 
-all:
-	@echo -e "Action not applicable for project.\nRefer to debug, profile, cross, or production targets."
+single-HTTP.info: single-HTTP.texinfo
+	makeinfo $<
 
 install:
-	@cp single-HTTP /usr/bin/
+	@./install.sh
 
 print:
 	@./changedSources.sh src c obj o
@@ -82,7 +88,7 @@ tar:
 	@tar -cSW --posix --restrict -f $(TARFILENAME) $(SRCDIRS) $(DEPDIR)
 
 shar:
-	@{ find -O3 src/ -type f -name "*.c" & find -O3 headers/ -type f -name "*.h"; } | shar -qV > single-HTTP.shar
+	@{ find -O3 src/ -type f -name "*.c" & find -O3 headers/ -type f -name "*.h"; } | shar -qV > $(SHARFILENAME)
 
 dist:
 	@tar -cSj --no-auto-compress --posix --restrict -f $(DISTFILENAME) $(SRCDIRS) $(DEPDIR)
@@ -99,5 +105,5 @@ clean:
 mostlyclean:
 	@echo "Action not applicable for project"
 
-clobber:
-	$(RM) $(OBJDIR)/*.o $(EXECUTABLES) $(DISTFILENAME) $(TARFILENAME)
+clobber: clean
+	$(RM) $(EXECUTABLES) $(DISTFILENAME) $(TARFILENAME) $(SHARFILENAME)
