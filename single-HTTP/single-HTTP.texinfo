@@ -1,0 +1,57 @@
+\input texinfo
+@settitle single-HTTP 0.7
+
+@copying
+This is a short example of a complete Texinfo file, version 1.0
+
+Copyright @copyright{} 2019 Free Software Foundation, Inc.
+
+@quotation
+Permission is granted
+@end quotation
+
+@end copying
+
+@titlepage
+@title Sample Manual 1.0
+@subtitle subtitle-if-any
+@subtitle second-subtitle
+@author author
+
+@page
+@insertcopying
+Published by
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top title
+This manual is for program, version version.
+@menu
+* First Chapter:: The first chapter.
+* Second Chapter:: The second chapter.
+* Copying:: Your rights and freedoms.
+@end menu
+@end ifnottex
+
+@node First Chapter
+@chapter First Chapter
+
+@cindex first chapter
+@cindex chapter, first
+
+@node Second Chapter
+@chapter Second Chapter
+
+@cindex second chapter
+@cindex chapter, second
+
+@node Copying
+@chapter Copying
+
+@cindex copying
+@cindex copying
+
+@bye
