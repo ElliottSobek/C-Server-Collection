@@ -1,0 +1,12 @@
+#!/bin/bash
+
+configure() {
+	if [ "$#" -ne 1 ]; then
+		echo "Usage:" `basename "$0"`
+		exit 1
+	fi
+
+	return 0
+}
+
+configure "$@"
